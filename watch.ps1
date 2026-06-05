@@ -6,7 +6,7 @@ param(
 )
 
 $source = $PSScriptRoot
-$extensions = @("*.lua", "*.toc", "*.xml")
+$extensions = @("*.lua", "*.toc", "*.xml", "*.tga", "*.blp")
 
 if (-not (Test-Path $WowPath)) {
     Write-Host "Destination not found: $WowPath" -ForegroundColor Yellow
@@ -40,7 +40,7 @@ $watcher.NotifyFilter = [System.IO.NotifyFilters]::LastWrite -bor [System.IO.Not
 $action = {
     $path = $Event.SourceEventArgs.FullPath
     $ext = [System.IO.Path]::GetExtension($path)
-    if ($ext -in @(".lua", ".toc", ".xml")) {
+    if ($ext -in @(".lua", ".toc", ".xml", ".tga", ".blp")) {
         Copy-Changed $path
     }
 }

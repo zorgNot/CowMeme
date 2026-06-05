@@ -4,6 +4,7 @@
 ## Author:
 ## Version: 1.0.0
 ## DefaultState: enabled
+## IconTexture: Interface\AddOns\CowMeme\images\image
 ## SavedVariables: CowMemeDB
 
 CowMeme.lua
