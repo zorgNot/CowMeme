@@ -8,3 +8,4 @@
 ## SavedVariables: CowMemeDB
 
 CowMeme.lua
+CowMeme_FnC.lua

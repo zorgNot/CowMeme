@@ -36,6 +36,7 @@ end
 function ns.OnLoad()
     CowMemeDB = ApplyDefaults(CowMemeDB, ns.defaults)
     ns.db = CowMemeDB
+    ns.fnc.Init()
 end
 
 function ns.OnLogin()
