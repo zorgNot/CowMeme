@@ -1,0 +1,9 @@
+## Interface: 20504
+## Title: CowMeme
+## Notes: A moo-velous addon
+## Author:
+## Version: 1.0.0
+## DefaultState: enabled
+## SavedVariables: CowMemeDB
+
+CowMeme.lua
