@@ -76,14 +76,30 @@ function fnc.Report(target)
         end
     end
 
+    local lines = {}
     if #list == 0 then
-        Send("[FnC] No deaths recorded. Clean run!")
+        table.insert(lines, "[FnC] No deaths recorded. Clean run!")
     else
-        Send("[FnC] Death Report:")
+        table.insert(lines, "[FnC] Death Report:")
         for i, entry in ipairs(list) do
-            Send(string.format("  %d. %s - %d death%s",
+            table.insert(lines, string.format("  %d. %s - %d death%s",
                 i, entry.name, entry.count, entry.count == 1 and "" or "s"))
         end
+    end
+
+    if channel == "GUILD" then
+        local i = 1
+        local function SendNext()
+            if i > #lines then return end
+            Send(lines[i])
+            i = i + 1
+            if i <= #lines then
+                C_Timer.After(0.15, SendNext)
+            end
+        end
+        SendNext()
+    else
+        for _, msg in ipairs(lines) do Send(msg) end
     end
 end
 
