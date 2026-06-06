@@ -103,10 +103,24 @@ function fnc.Report(target)
     end
 end
 
+-- Build a set of current party/raid member names
+local function GetGroupMembers()
+    local members = {}
+    members[UnitName("player")] = true
+    local prefix = IsInRaid() and "raid" or "party"
+    local count  = IsInRaid() and GetNumGroupMembers() or GetNumSubgroupMembers()
+    for i = 1, count do
+        local name = UnitName(prefix .. i)
+        if name then members[name] = true end
+    end
+    return members
+end
+
 -- Record a player death
 local function OnUnitDied(destName, destFlags)
     if bit.band(destFlags, COMBATLOG_OBJECT_TYPE_PLAYER) == 0 then return end
     if not destName then return end
+    if not GetGroupMembers()[destName] then return end
     local deaths = ns.db.fnc.deaths
     deaths[destName] = (deaths[destName] or 0) + 1
     ns.Print("|cffFFD700[FnC]|r " .. destName .. " died. (" .. deaths[destName] .. ")")
@@ -137,6 +151,20 @@ end
 -- Slash command handler: /fnc <cmd>
 local fncCommands = {}
 
+fncCommands["delete"] = function(arg)
+    if not arg or arg == "" then
+        ns.Print("|cffFFD700[FnC]|r Usage: /fnc delete <name>")
+        return
+    end
+    local name = arg:gsub("^%l", string.upper) -- normalize capitalization
+    if ns.db.fnc.deaths[name] then
+        ns.db.fnc.deaths[name] = nil
+        ns.Print("|cffFFD700[FnC]|r Removed " .. name .. " from the death list.")
+    else
+        ns.Print("|cffFFD700[FnC]|r " .. name .. " not found in the death list.")
+    end
+end
+
 fncCommands["new"] = function() fnc.New() end
 fncCommands["start"] = function() fnc.Start() end
 fncCommands["reset"] = function() fnc.Reset() end
@@ -151,6 +179,7 @@ fncCommands["help"] = function()
     print("  |cffffff00/fnc report|r    - announce to party/raid/say (auto)")
     print("  |cffffff00/fnc report g|r  - announce to guild chat")
     print("  |cffffff00/fnc report 1|r  - announce to channel number")
+    print("  |cffffff00/fnc delete <name>|r - remove a player from the list")
     print("  |cffffff00/fnc stop|r    - stop tracking")
     print("  |cffffff00/fnc help|r    - show this message")
 end
