@@ -4,28 +4,44 @@ ns.copypasta = {}
 local cp = ns.copypasta
 
 -- Registry: populated by individual content files
--- { [playerName] = { "line1", "line2", ... } }
+-- {
+--   [playerKey] = {
+--     chars = { "MainName", "Alt1", "Alt2", ... },
+--     lines = { "line1", "line2", ... },
+--   }
+-- }
 cp.registry = {}
 
--- Register a player's content (called from each content file)
-function cp.Register(playerName, lines)
-    cp.registry[playerName] = lines
+-- Reverse lookup: char name (lowercase) -> playerKey
+cp.charIndex = {}
+
+-- Register a player with their characters and lines
+function cp.Register(playerKey, data)
+    cp.registry[playerKey] = data
+    cp.charIndex[playerKey:lower()] = playerKey
+    for _, charName in ipairs(data.chars) do
+        cp.charIndex[charName:lower()] = playerKey
+    end
+end
+
+-- Resolve an input name (any char) to a registry entry
+local function Resolve(input)
+    local key = cp.charIndex[input:lower()]
+    return key and cp.registry[key], key
 end
 
 -- Pick a random line and send to chat
-function cp.Send(playerName, channel)
-    local name = playerName and playerName:gsub("^%l", string.upper) or ""
-    local lines = cp.registry[name]
+function cp.Send(input, channel)
+    local entry, key = Resolve(input)
 
-    if not lines or #lines == 0 then
-        ns.Print("|cffFFD700[CopyPasta]|r No content registered for \"" .. name .. "\".")
-        ns.Print("Available players: " .. cp.ListPlayers())
+    if not entry or #entry.lines == 0 then
+        ns.Print("|cffFFD700[CopyPasta]|r Unknown character \"" .. input .. "\".")
+        ns.Print("Registered players: " .. cp.ListPlayers())
         return
     end
 
-    local line = lines[math.random(1, #lines)]
+    local line = entry.lines[math.random(1, #entry.lines)]
 
-    -- Auto-detect channel if not specified
     if not channel or channel == "" then
         if IsInRaid() then
             channel = "RAID"
@@ -41,7 +57,7 @@ function cp.Send(playerName, channel)
     SendChatMessage(line, channel)
 end
 
--- Return a comma-separated list of registered player names
+-- Return a formatted list of players and their known characters
 function cp.ListPlayers()
     local names = {}
     for k in pairs(cp.registry) do
@@ -51,34 +67,39 @@ function cp.ListPlayers()
     return #names > 0 and table.concat(names, ", ") or "(none)"
 end
 
--- Slash command: /copypasta <name> [channel]
+-- Slash command: /copypasta <charname> [channel]
 local function HandleSlash(input)
     local name, channel = input:match("^(%S+)%s*(%S*)")
 
     if not name or name == "" or name:lower() == "help" then
         ns.Print("|cffFFD700[CopyPasta]|r commands:")
-        print("  |cffffff00/copypasta <name>|r         - send a random pasta to party/raid/say")
+        print("  |cffffff00/copypasta <name>|r         - send a random pasta (party/raid/say)")
         print("  |cffffff00/copypasta <name> g|r       - send to guild chat")
         print("  |cffffff00/copypasta <name> <1-9>|r   - send to a numbered channel")
-        print("  |cffffff00/copypasta list|r            - list registered players")
+        print("  |cffffff00/copypasta list|r            - list registered players and chars")
         return
     end
 
     if name:lower() == "list" then
-        ns.Print("|cffFFD700[CopyPasta]|r Registered players: " .. cp.ListPlayers())
+        ns.Print("|cffFFD700[CopyPasta]|r Registered players:")
+        local keys = {}
+        for k in pairs(cp.registry) do table.insert(keys, k) end
+        table.sort(keys)
+        for _, k in ipairs(keys) do
+            local entry = cp.registry[k]
+            print("  |cffffff00" .. k .. "|r -> " .. table.concat(entry.chars, ", "))
+        end
         return
     end
 
-    -- Numbered channel support
     if channel ~= "" and tonumber(channel) then
         local num = tonumber(channel)
-        local line = cp.registry[name:gsub("^%l", string.upper)]
-        if not line then
-            ns.Print("|cffFFD700[CopyPasta]|r Unknown player \"" .. name .. "\".")
+        local entry = Resolve(name)
+        if not entry then
+            ns.Print("|cffFFD700[CopyPasta]|r Unknown character \"" .. name .. "\".")
             return
         end
-        local lines = line
-        local msg = "pastaThat " .. lines[math.random(1, #lines)] .. " {rt7}"
+        local msg = "pastaThat " .. entry.lines[math.random(1, #entry.lines)] .. " {rt7}"
         SendChatMessage(msg, "CHANNEL", nil, num)
         return
     end
