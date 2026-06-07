@@ -78,7 +78,7 @@ local function HandleSlash(input)
             return
         end
         local lines = line
-        local msg = lines[math.random(1, #lines)]
+        local msg = "pastaThat " .. lines[math.random(1, #lines)] .. " {rt7}"
         SendChatMessage(msg, "CHANNEL", nil, num)
         return
     end
