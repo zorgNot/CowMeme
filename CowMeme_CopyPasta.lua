@@ -24,6 +24,11 @@ function cp.Register(playerKey, data)
     end
 end
 
+-- Build the final chat message from a raw line
+local function BuildMessage(line)
+    return "pastaThat " .. line .. " {rt7}"
+end
+
 -- Resolve an input name (any char) to a registry entry
 local function Resolve(input)
     local key = cp.charIndex[input:lower()]
@@ -40,7 +45,7 @@ function cp.Send(input, channel)
         return
     end
 
-    local line = entry.lines[math.random(1, #entry.lines)]
+    local line = BuildMessage(entry.lines[math.random(1, #entry.lines)])
 
     if not channel or channel == "" then
         if IsInRaid() then
@@ -99,7 +104,7 @@ local function HandleSlash(input)
             ns.Print("|cffFFD700[CopyPasta]|r Unknown character \"" .. name .. "\".")
             return
         end
-        local msg = "pastaThat " .. entry.lines[math.random(1, #entry.lines)] .. " {rt7}"
+        local msg = BuildMessage(entry.lines[math.random(1, #entry.lines)])
         SendChatMessage(msg, "CHANNEL", nil, num)
         return
     end

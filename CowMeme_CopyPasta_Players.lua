@@ -4,6 +4,7 @@ ns.copypasta.Register("Moist", {
     chars = { "Moistorcs", },
     lines = {
         "moist could walk into kara and somehow owe Prince Malchezaar gold by the end of the night",
+        "@Moistiana is it true your PvP opener was evasion instead of sap after pressing Shadow Step? ... yes",
         "moistorcs is genuinely the most statistically impossible player i have ever witnessed in my life bro logs into raid like he's about to make a big play and immediately starts donating gold to the entire guild economy,",
         "If Moistorcs rolled for Ashes of Al'ar, the mount would despawn.",
         "statisticians are begging moist to stop gambling because every time he opens a roll window he creates data that should not exist",
