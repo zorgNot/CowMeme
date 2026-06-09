@@ -37,6 +37,7 @@ function ns.OnLoad()
     CowMemeDB = ApplyDefaults(CowMemeDB, ns.defaults)
     ns.db = CowMemeDB
     ns.fnc.Init()
+    ns.copypasta.Init()
 end
 
 function ns.OnLogin()

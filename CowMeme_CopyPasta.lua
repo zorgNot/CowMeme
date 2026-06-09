@@ -3,6 +3,11 @@ local ADDON_NAME, ns = ...
 ns.copypasta = {}
 local cp = ns.copypasta
 
+-- Default CopyPasta settings — merged into CowMemeDB on load
+ns.defaults.copypasta = {
+    gambaMonitor = false,
+}
+
 -- Registry: populated by individual content files
 -- {
 --   [playerKey] = {
@@ -27,6 +32,31 @@ end
 -- Build the final chat message from a raw line
 local function BuildMessage(line)
     return "pastaThat " .. line .. " {rt7}"
+end
+
+-- The canonical channel: the best non-protected channel available.
+-- SAY/YELL are protected outside hardware events, so the order is
+-- group > guild > nil (nil = print locally instead).
+local function GetCanonicalChannel()
+    if IsInRaid() then
+        return "RAID"
+    elseif IsInGroup() then
+        return "PARTY"
+    elseif IsInGuild() then
+        return "GUILD"
+    end
+    return nil
+end
+
+-- Send a finished message to the canonical channel, or print it
+-- locally if none is available
+function cp.SendToCanonicalChannel(line)
+    local channel = GetCanonicalChannel()
+    if channel then
+        SendChatMessage(line, channel)
+    else
+        ns.Print("|cffFFD700[CopyPasta]|r (no valid channel) " .. line)
+    end
 end
 
 -- Resolve an input name (any char) to a registry entry
@@ -62,6 +92,69 @@ function cp.Send(input, channel)
     SendChatMessage(line, channel)
 end
 
+-- Gamba monitor: watch chat for "<character> owes ..." and fire a
+-- copypasta for the matching registered player
+local GAMBA_CHAT_EVENTS = {
+    "CHAT_MSG_SAY",
+    "CHAT_MSG_YELL",
+    "CHAT_MSG_PARTY",
+    "CHAT_MSG_PARTY_LEADER",
+    "CHAT_MSG_RAID",
+    "CHAT_MSG_RAID_LEADER",
+    "CHAT_MSG_GUILD",
+    "CHAT_MSG_CHANNEL",
+}
+
+local gambaFrame = CreateFrame("Frame", "CowMemeGambaFrame", UIParent)
+local lastGambaTrigger = 0
+
+local function OnGambaChat(msg)
+    local name = msg:match("(%S+) owes ")
+    if not name then return end
+
+    -- Strip realm suffix if present (Name-Realm)
+    name = name:match("^([^%-]+)") or name
+    local entry = Resolve(name)
+    if not entry or #entry.lines == 0 then return end
+
+    -- Throttle so a burst of "owes" lines doesn't spam pastas
+    if GetTime() - lastGambaTrigger < 5 then return end
+    lastGambaTrigger = GetTime()
+
+    local line = BuildMessage(entry.lines[math.random(1, #entry.lines)])
+    cp.SendToCanonicalChannel(line)
+end
+
+gambaFrame:SetScript("OnEvent", function(self, event, msg)
+    OnGambaChat(msg)
+end)
+
+function cp.EnableGamba()
+    ns.db.copypasta.gambaMonitor = true
+    for _, event in ipairs(GAMBA_CHAT_EVENTS) do
+        gambaFrame:RegisterEvent(event)
+    end
+    ns.Print("|cffFFD700[CopyPasta]|r Gamba monitor |cff00ff00ON|r.")
+end
+
+function cp.DisableGamba()
+    ns.db.copypasta.gambaMonitor = false
+    for _, event in ipairs(GAMBA_CHAT_EVENTS) do
+        gambaFrame:UnregisterEvent(event)
+    end
+    ns.Print("|cffFFD700[CopyPasta]|r Gamba monitor |cffff0000OFF|r.")
+end
+
+-- Called from OnLoad after db is ready
+function cp.Init()
+    if not ns.db.copypasta then
+        ns.db.copypasta = { gambaMonitor = false }
+    end
+    if ns.db.copypasta.gambaMonitor then
+        cp.EnableGamba()
+    end
+end
+
 -- Return a formatted list of players and their known characters
 function cp.ListPlayers()
     local names = {}
@@ -82,6 +175,21 @@ local function HandleSlash(input)
         print("  |cffffff00/copypasta <name> g|r       - send to guild chat")
         print("  |cffffff00/copypasta <name> <1-9>|r   - send to a numbered channel")
         print("  |cffffff00/copypasta list|r            - list registered players and chars")
+        print("  |cffffff00/copypasta gamba [on|off]|r  - toggle the 'owes' chat monitor")
+        return
+    end
+
+    if name:lower() == "gamba" then
+        local mode = channel:lower()
+        if mode == "on" then
+            cp.EnableGamba()
+        elseif mode == "off" then
+            cp.DisableGamba()
+        elseif ns.db.copypasta.gambaMonitor then
+            cp.DisableGamba()
+        else
+            cp.EnableGamba()
+        end
         return
     end
 
