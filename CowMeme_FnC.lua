@@ -124,7 +124,7 @@ local MILESTONES = {
     [10] = "%s is unBOPable!",
     [12] = "%s is wicked dead!",
     [14] = "%s is on a monster floor streak!",
-    [15] = "%s is CORPSEMAXXING!",
+    [15] = "%s is FLOORMAXXING!",
 }
 
 local function AnnounceDeath(name, count)
