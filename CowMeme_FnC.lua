@@ -116,6 +116,36 @@ local function GetGroupMembers()
     return members
 end
 
+-- Per-character death milestone announcements
+local MILESTONES = {
+    [3]  = "%s is on a dying spree!",
+    [5]  = "%s is afterlifing!",
+    [7]  = "%s is on a mega dead streak!",
+    [10] = "%s is unBOPable!",
+    [12] = "%s is wicked dead!",
+    [14] = "%s is on a monster floor streak!",
+    [15] = "%s is CORPSEMAXXING!",
+}
+
+local function AnnounceDeath(name, count)
+    local msg
+
+    -- First blood = first recorded death of the run
+    local total = 0
+    for _, c in pairs(ns.db.fnc.deaths) do
+        total = total + c
+    end
+    if total == 1 then
+        msg = "First blood! " .. name .. " BloodTrail "
+    elseif MILESTONES[count] then
+        msg = string.format(MILESTONES[count], name)
+    end
+
+    if msg then
+        ns.copypasta.SendToCanonicalChannel(msg .. " " .. count .. " {rt8}")
+    end
+end
+
 -- Record a player death
 local function OnUnitDied(destName, destFlags)
     if bit.band(destFlags, COMBATLOG_OBJECT_TYPE_PLAYER) == 0 then return end
@@ -124,6 +154,7 @@ local function OnUnitDied(destName, destFlags)
     local deaths = ns.db.fnc.deaths
     deaths[destName] = (deaths[destName] or 0) + 1
     ns.Print("|cffFFD700[FnC]|r " .. destName .. " died. (" .. deaths[destName] .. ")")
+    AnnounceDeath(destName, deaths[destName])
 end
 
 fncFrame:SetScript("OnEvent", function(self, event, ...)
