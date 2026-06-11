@@ -41,6 +41,16 @@ ns.copypasta.Register("Mcian", {
     },
 })
 
+ns.copypasta.Register("Large", {
+    chars = { "Largehands", "Phallussy" },
+    lines = {
+        "LMFAO Phallussy pulled threat AGAIN!!! \"oHhH nOhH\" STFU U GREN PARSE LOSER!!! he tells zug zug melee to stop dps while he spams seeds like a brainlet. srsly who named this toon?? 2026 and he still cant manage aggro at KaelThas???",
+        "Largehands got that military cuck energy, seeds 12 packs on Vashj then acts shocked when raid explodes!!!!!! parsing > mechanics, healers blamed, RNG blamed, lag blamed,",
+        "Phallussy encouraging gamba rolls while ninja looters somehow always win DKP items????? coincidence????? KEL'THAS himself couldnt investigate this corruption!!!!!! green parse CEO, bio hazard raid leader!",
+        "Every wipe got the same script: Phallussy seeds, pulls aggro, says \"ohhhh nohh\"!!!!!! then healers get court martialed while his green parse ascends beyond reason. Vashj laughing, Kel'Thas laughing, guild bank crying",
+    },
+})
+
 ns.copypasta.Register("Beaglz", {
     chars = { "Beaglz", },
     lines = {
@@ -49,5 +59,52 @@ ns.copypasta.Register("Beaglz", {
         "i swear beaglz man sees a boss mechanic and reacts like he's being personally invited to participate.",
         "if warcraft logs tracked time spent deceased beaglz'd be orange parsing. somebody check his keybinds because i'm starting to think fade and die instantly are bound to the same button.",
         "i've seen beaglz alive for maybe three consecutive minutes all expansion.",
+    },
+})
+
+ns.copypasta.Register("Shaeza", {
+    chars = { "Shaeza", "Torrin", "Rhemmi" },
+    lines = {
+        "FLOORZA spotted in Karazhan again!!!!!! pulls aggro before tanks even tab target, eats floor instantly, then spends 20 mins explaining why rogue loot is actually HER loot lul.",
+        "Shaeza sees a rogue equip upgrade and enters ENHANCE EMERGENCY MODE!!!!!! DKP conspiracy, ninja looters everywhere, RNGesus personally targeting her since TBC launch.",
+        "Shaeza lost another DST roll!!!!!! statisticians called, priests called, investigators called. 7 losses deep and now convinced Kel'Thas coded the loot table himself to funnel trinkets directly to hunters",
+        "Floorza's threat meter looks like a crypto chart. Every pull starts normal then suddenly vertical. Tank still positioning, meanwhile she's already making direct eye contact with the boss in the afterlife.",
+        
+    },
+})
+
+ns.copypasta.Register("bob", {
+    chars = { "Bagelbob", "Bagelbobert", "Bagelbobity", "Bagelbuddy", "Bagelbobby", "Bagelshopbob", "Bagelshopbob", "Bagelbobbert" },
+    lines = {
+        "Bagelbob sees threat as a suggested mechanic. Tank got a 10 second lead, sunders up, perfect pull... doesn't matter. Bro is already halfway to Valhalla because stopping DPS is apparently against his religion.",
+        "BAGELBOB: Creator of the legendary \"fast n clean\" run strategy. Somehow every run is 40% slower and 300% more traumatic. Three accidental pulls, two wipes, one raid warning essay. Fast? Nope. Clean? Absolutely not.",
+        "Bagelbob is the social glue holding the guild together, which is fortunate because his warrior gameplay is actively trying to tear it apart. The second he gets fully buffed he starts behaving like consequences are disabled.",
+        "Bagelbob looked at crowd control, kill orders, and patience and decided those were other people's responsibilities.",
+        "Bagelbob got that spreadsheet gamer aura. Logs open on monitor one, raid assignments on monitor two, twelve tabs of calculations running... then immediately charges into a pull he wasn't supposed to start. Peak warrior intellectualism.",
+        "Warrior brain so advanced it loops back around. Will spend 45 minutes optimizing a 0.3% DPS increase in spreadsheets, then lose all of it instantly by ripping threat and getting folded like a lawn chair.",
+        "\"PUMP THE BRAKES???? never!!!!! warriors dont brake we ZUG ZUG!!!!! ohhhh nohh phallussy is pulling threat so why cant I?????? tank cant even t0nt Kel'Thas trash im goin bio n unsubbing. 2026 n ppl still ask for threat caps lul u r bad\" -bob",
+    },
+})
+
+ns.copypasta.Register("doug", {
+    chars = { "Donutdoug" },
+    lines = {
+        "DONUTDOUG got that esports aim and NPC pathfinding!!!!!! brother can execute a 37-button rotation with frame-perfect precision but gets asked where the TK attunement NPC is and suddenly we're observing a wildlife documentary.",
+        "DONUTDOUG signs up for EVERY gamba!!!!!! every single one. Then raid night arrives and bro forgets to roll. Loot expires, raid moves on, twenty minutes later: \"wait did the gamba happen?\" ACTUAL goldfish debuff.",
+        "The duality of Donutdoug: mechanically gifted enough to pilot a space shuttle, cognitively incapable of locating a quest giver 40 yards away. Elite gamer hands, unplugged GPS brain.",
+        "BRO IS A LITERAL PRO GAMER!!!!!! puts up numbers, pumps damage, presses every button correctly. Then someone says \"go get attuned for TK\" and he starts wandering Outland like a Skyrim guard who lost his patrol route.",
+        "Donutdoug treats information gathering like a forbidden school of magic. Google search? Nah. Wowhead? Nah. Asking guild chat the exact same question 14 people already answered? LOCK IT IN.",
+    },
+})
+
+ns.copypasta.Register("sam", {
+    chars = { "Imretired", "Sandwichsam" },
+    lines = {
+        "SANDWICHSAM AKA TACOLAD AKA IMRETIRED AKA whatever name he's using this reset. Bro got more aliases than Bagelbob has spreadsheets. Every raid roster looks like we're investigating fantasy identity fraud.",
+        "Dude is younger than TBC but somehow plays like he was there when the Dark Portal opened. PvP demon, top DPS, absolute raid weapon... then his pet takes a scenic tour through Black Temple and suddenly we're in combat with half the zip code.",
+        "SAM is the living embodiment of \"he got that dog in him\" except unfortunately the dog is 80 yards away chain-pulling trash. Pet AI enters its villain arc while Sam is still pumping the boss like nothing happened.",
+        "TOP PARSE. GLADIATOR HANDS. ELITE GAMER. Then raid warning appears: \"WHO PULLED THAT PACK?\" Camera slowly pans to Sam's pet returning from a side quest it invented for itself 3 minutes ago.",
+        "Every hunter mistake from 2007 somehow survives exclusively through Sam. Pet on aggressive? Check. Random extra mobs? Check. Somehow still top DPS afterward? Also check. Blizzard's strongest soldier.",
+        "IMRETIRED btw. Twenty years old. Brother you are NOT retired, you haven't even unlocked lower back pain yet. Get back in the arena queue and recall your pet before it starts the next expansion early.",
     },
 })
