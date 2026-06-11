@@ -34,6 +34,13 @@ ns.copypasta.Register("Softy", {
     },
 })
 
+ns.copypasta.Register("Mcian", {
+    chars = { "Javstar" },
+    lines = {
+        "theyre putting something in mcians water that makes him pee",
+    },
+})
+
 ns.copypasta.Register("Beaglz", {
     chars = { "Beaglz", },
     lines = {
