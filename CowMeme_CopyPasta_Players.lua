@@ -108,3 +108,14 @@ ns.copypasta.Register("sam", {
         "IMRETIRED btw. Twenty years old. Brother you are NOT retired, you haven't even unlocked lower back pain yet. Get back in the arena queue and recall your pet before it starts the next expansion early.",
     },
 })
+
+ns.copypasta.Register("stink", {
+    chars = { "Deepstink", "Stinkkink" },
+    lines = {
+        "SMELL POSTING IS BACK!!!!!! Deepstink rolls up and the air hits like onions, garlic, fermented cabbage, and a critically timed self-buff. Entire raid acting like it's disgusting while standing suspiciously close to him all night. Curious.",
+        "DEEPSTINK enters the raid and suddenly everyone's FPS goes up. 99 parse healer, 99 parse human being. Bro healing through mechanics that haven't even happened yet.",
+        "Deepstink got that xX_1337_HEALBOT_Xx energy. Not the addon. The actual machine. You check details after raid and he's healed more damage than the boss dealt. Explain that one, Einstein.",
+        "The stinkers scent discourse has gone TOO FAR. First it was a joke. Then people started describing notes and aromas like they're reviewing wine. \"I'm getting hints of garlic and cabbage on the finish.\" BRO WE ARE IN SSC",
+        "DEEPSTINK FACT #427: During one raid he parsed so hard that a hunter pet got healed back from a pull it hadn't made yet.",
+    },
+})
