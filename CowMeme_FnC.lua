@@ -6,6 +6,7 @@ local fnc = ns.fnc
 -- Default FnC settings
 ns.defaults.fnc = {
     active = false,
+    batch  = false, -- batch milestone announcements (always on in raid)
     deaths = {}, -- { [playerName] = count }
 }
 
@@ -103,46 +104,84 @@ function fnc.Report(target)
     end
 end
 
--- Build a set of current party/raid member names
+-- Map current party/raid member names to their unit tokens
 local function GetGroupMembers()
     local members = {}
-    members[UnitName("player")] = true
+    members[UnitName("player")] = "player"
     local prefix = IsInRaid() and "raid" or "party"
     local count  = IsInRaid() and GetNumGroupMembers() or GetNumSubgroupMembers()
     for i = 1, count do
-        local name = UnitName(prefix .. i)
-        if name then members[name] = true end
+        local unit = prefix .. i
+        local name = UnitName(unit)
+        if name then members[name] = unit end
     end
     return members
 end
 
--- Per-character death milestone announcements
+-- Per-character death milestone announcements.
+-- %s is the subject including verb, e.g. "Bob is" or "Bob and Alice are".
 local MILESTONES = {
-    [3]  = "%s is on a dying spree!",
-    [5]  = "%s is afterlifing!",
-    [7]  = "%s is on a mega dead streak!",
-    [10] = "%s is unBOPable!",
-    [12] = "%s is wicked dead!",
-    [14] = "%s is on a monster floor streak!",
-    [15] = "%s is FLOORMAXXING!",
+    [3]  = "%s on a dying spree!",
+    [5]  = "%s afterlifing!",
+    [7]  = "%s on a mega dead streak!",
+    [10] = "%s unBOPable!",
+    [12] = "%s wicked dead!",
+    [14] = "%s on a monster floor streak!",
+    [15] = "%s FLOORMAXXING!",
 }
 
-local function AnnounceDeath(name, count)
-    local msg
+-- "A is" / "A and B are" / "A, B and C are"
+local function FormatSubject(names)
+    if #names == 1 then
+        return names[1] .. " is"
+    end
+    return table.concat(names, ", ", 1, #names - 1) .. " and " .. names[#names] .. " are"
+end
 
-    -- First blood = first recorded death of the run
+local function AnnounceMilestone(names, count)
+    local msg = string.format(MILESTONES[count], FormatSubject(names))
+    ns.copypasta.SendToCanonicalChannel(msg .. " " .. count .. " {rt8}")
+end
+
+-- Batch mode: collect names per milestone for 1s, then announce together.
+-- Explicit setting, or forced on in raid.
+local pendingMilestones = {} -- { [count] = { name1, name2, ... } }
+
+local function IsBatching()
+    return ns.db.fnc.batch or IsInRaid()
+end
+
+local function QueueMilestone(name, count)
+    if not pendingMilestones[count] then
+        pendingMilestones[count] = {}
+        C_Timer.After(1, function()
+            local names = pendingMilestones[count]
+            pendingMilestones[count] = nil
+            if names and #names > 0 then
+                AnnounceMilestone(names, count)
+            end
+        end)
+    end
+    table.insert(pendingMilestones[count], name)
+end
+
+local function AnnounceDeath(name, count)
+    -- First blood = first recorded death of the run (never batched)
     local total = 0
     for _, c in pairs(ns.db.fnc.deaths) do
         total = total + c
     end
     if total == 1 then
-        msg = "First blood! " .. name .. " BloodTrail "
-    elseif MILESTONES[count] then
-        msg = string.format(MILESTONES[count], name)
+        ns.copypasta.SendToCanonicalChannel("First blood! " .. name .. " BloodTrail  " .. count .. " {rt8}")
+        return
     end
 
-    if msg then
-        ns.copypasta.SendToCanonicalChannel(msg .. " " .. count .. " {rt8}")
+    if MILESTONES[count] then
+        if IsBatching() then
+            QueueMilestone(name, count)
+        else
+            AnnounceMilestone({ name }, count)
+        end
     end
 end
 
@@ -150,7 +189,10 @@ end
 local function OnUnitDied(destName, destFlags)
     if bit.band(destFlags, COMBATLOG_OBJECT_TYPE_PLAYER) == 0 then return end
     if not destName then return end
-    if not GetGroupMembers()[destName] then return end
+    local unit = GetGroupMembers()[destName]
+    if not unit then return end
+    -- Feign Death fires UNIT_DIED too; a feigned hunter is still alive
+    if UnitIsFeignDeath(unit) or UnitHealth(unit) > 0 then return end
     local deaths = ns.db.fnc.deaths
     deaths[destName] = (deaths[destName] or 0) + 1
     ns.Print("|cffFFD700[FnC]|r " .. destName .. " died. (" .. deaths[destName] .. ")")
@@ -171,7 +213,7 @@ end)
 -- Resume tracking if it was active before logout
 function fnc.Init()
     if not ns.db.fnc then
-        ns.db.fnc = { active = false, deaths = {} }
+        ns.db.fnc = { active = false, batch = false, deaths = {} }
     end
     if ns.db.fnc.active then
         fncFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
@@ -196,6 +238,19 @@ fncCommands["delete"] = function(arg)
     end
 end
 
+fncCommands["batch"] = function(arg)
+    local mode = arg and arg:lower() or ""
+    if mode == "on" then
+        ns.db.fnc.batch = true
+    elseif mode == "off" then
+        ns.db.fnc.batch = false
+    else
+        ns.db.fnc.batch = not ns.db.fnc.batch
+    end
+    local state = ns.db.fnc.batch and "|cff00ff00ON|r" or "|cffff0000OFF|r"
+    ns.Print("|cffFFD700[FnC]|r Batch mode " .. state .. " (always on in raid).")
+end
+
 fncCommands["new"] = function() fnc.New() end
 fncCommands["start"] = function() fnc.Start() end
 fncCommands["reset"] = function() fnc.Reset() end
@@ -211,6 +266,7 @@ fncCommands["help"] = function()
     print("  |cffffff00/fnc report g|r  - announce to guild chat")
     print("  |cffffff00/fnc report 1|r  - announce to channel number")
     print("  |cffffff00/fnc delete <name>|r - remove a player from the list")
+    print("  |cffffff00/fnc batch [on|off]|r - batch milestone announcements (auto-on in raid)")
     print("  |cffffff00/fnc stop|r    - stop tracking")
     print("  |cffffff00/fnc help|r    - show this message")
 end

@@ -119,3 +119,14 @@ ns.copypasta.Register("stink", {
         "DEEPSTINK FACT #427: During one raid he parsed so hard that a hunter pet got healed back from a pull it hadn't made yet.",
     },
 })
+
+
+ns.copypasta.Register("anna", {
+    chars = { "Annuh", "Annuhz" },
+    lines = {
+        "The guild spent six months convinced Anna was running an industrial-scale farming operation. Every time someone needed consumes she'd appear out of the void with 800 stacks and no explanation. Actual NPC behavior.",
+        "SERPENT MEAT. MORE SERPENT MEAT. EVEN MORE SERPENT MEAT!!!!!! Nobody knows what she's cooking. Nobody knows where it all goes. The only certainty is that another thousand snakes have vanished from the ecosystem.",
+        "XxANNA_RESOURCEQUEENxX enters zone. local wildlife leaves zone. economy leaves zone. reality leaves zone. One minute you're doing dailies, next minute she's explaining a serpent meat arbitrage opportunity in guild chat and nobody knows what happened.",
+        "OLD SCHOOL FORUM POST ENERGY: \"LF ANNA\" Last seen somewhere in Outland skinning an entire biome into extinction. If found, please return to raid before she accidentally corners the global serpent meat market again. kthxbye.",
+    },
+})
