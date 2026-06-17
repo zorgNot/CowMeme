@@ -42,7 +42,7 @@ ns.copypasta.Register("Mcian", {
 })
 
 ns.copypasta.Register("Large", {
-    chars = { "Largehands", "Phallussy" },
+    chars = { "Largehands", "Phallussy", "Lil" },
     lines = {
         "LMFAO Phallussy pulled threat AGAIN!!! \"oHhH nOhH\" STFU U GREN PARSE LOSER!!! he tells zug zug melee to stop dps while he spams seeds like a brainlet. srsly who named this toon?? 2026 and he still cant manage aggro at KaelThas???",
         "Largehands got that military cuck energy, seeds 12 packs on Vashj then acts shocked when raid explodes!!!!!! parsing > mechanics, healers blamed, RNG blamed, lag blamed,",
@@ -120,7 +120,6 @@ ns.copypasta.Register("stink", {
     },
 })
 
-
 ns.copypasta.Register("anna", {
     chars = { "Annuh", "Annuhz" },
     lines = {
@@ -129,4 +128,34 @@ ns.copypasta.Register("anna", {
         "XxANNA_RESOURCEQUEENxX enters zone. local wildlife leaves zone. economy leaves zone. reality leaves zone. One minute you're doing dailies, next minute she's explaining a serpent meat arbitrage opportunity in guild chat and nobody knows what happened.",
         "OLD SCHOOL FORUM POST ENERGY: \"LF ANNA\" Last seen somewhere in Outland skinning an entire biome into extinction. If found, please return to raid before she accidentally corners the global serpent meat market again. kthxbye.",
     },
+})
+
+ns.copypasta.Register("ben", {
+    chars = { "Marksben", "Benedickton" },
+    lines = {
+        "ben could have rolled shaman. BLOODLUST. CHAIN HEAL. guild hero arc. instead willingly entered the hunter containment zone with 9000 identical dudes named Legolass and Huntèr. genuinely fascinating self-destructive behavior.",
+        "MARKSBEN aura is saying \"great idea guys\" and causing a wipe 5 minutes later through sarcasm so concentrated it bends raid mechanics around itself.",
+        "DST didn't drop for Ben. DST happened TO Ben. It passed through the fabric of reality and attached itself to the nearest source of sarcasm. Crucible still studying the event like a natural disaster.",
+        "Benedickton Wildagny Marksben Benjamin Franklin Delaware crossing the DST. every phase a new name. every name somehow sarcastic. get fucked crucible deezy eat yo heart out",
+    },
+})
+
+ns.copypasta.Register("mcian", {
+    chars = { "Javstar", "Chucksneed", "Mcian" },
+    lines = {
+       "beans on a paper plate. tuna straight from the can. vape cloud visible from Netherstorm. absolutely locked in. mcian operating at a gamer frequency normally only detected by military satellites.",
+       "every niche internet community eventually leads back to mcian. you ask where a copypasta came from and suddenly he's explaining a forum that had 37 members and was active for six weeks in 2011. keeper of forbidden texts.",
+       "brother could grind a diamond star into dust. if a game contains a progress bar mcian's already halfway through it before normal people finish reading the tooltip. genuinely concerning hand-to-mouse conversion rate.",
+       "Every guild got one female blood elf paladin. MCIAN somehow became all of them simultaneously. private server veteran, SSF exile, tuna enthusiast, blood elf princess. impossible stat allocation.",
+   },
+})
+
+ns.copypasta.Register("tom", {
+    chars = { "Bageltom", "Bagelbuddy", },
+    lines = {
+       "BAGELTOM allegedly named Tom but evidence remains inconclusive. could be Greg. could be Steve. could be Forklift. Discord says Dochunidiot which sounds less like a username and more like a modem dying in 2007. corrupted save file aura.",
+       "Bageltom and Moistorcs in the same voice channel got FEMA issuing warnings. one can't hold threat, one can't hold gold. together they're building an economic and mechanical disaster unseen since original TBC.",
+       "Brother chose bear druid then immediately started unionizing against tanking. \"have we considered alternatives?\" YES. YOU. THAT'S WHY YOU'RE HERE. PLEASE HIT THE BOSS.",
+       "every pull a community event to discover who gets aggro first. Bageltom pioneering low-threat tanking. looked at Karazhan and said \"what if somebody else did my job?\" revolutionary research."
+   },
 })
