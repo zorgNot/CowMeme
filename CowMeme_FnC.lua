@@ -130,82 +130,163 @@ local MILESTONES = {
     [15] = "%s FLOORMAXXING!",
 }
 
--- "A is" / "A and B are" / "A, B and C are"
-local function FormatSubject(names)
-    if #names == 1 then
-        return names[1] .. " is"
+-- entries: { { name = "Bob", cause = "slain by ... (fire)" }, ... }
+-- "Bob, cause is" / "Bob, cause and Alice, cause are"
+local function FormatSubject(entries)
+    local parts = {}
+    for i, e in ipairs(entries) do
+        parts[i] = e.name .. ", " .. e.cause
     end
-    return table.concat(names, ", ", 1, #names - 1) .. " and " .. names[#names] .. " are"
+    if #parts == 1 then
+        return parts[1] .. " is"
+    end
+    return table.concat(parts, ", ", 1, #parts - 1) .. " and " .. parts[#parts] .. " are"
 end
 
-local function AnnounceMilestone(names, count)
-    local msg = string.format(MILESTONES[count], FormatSubject(names))
+local function AnnounceMilestone(entries, count)
+    local msg = string.format(MILESTONES[count], FormatSubject(entries))
     ns.copypasta.SendToCanonicalChannel(msg .. " " .. count .. " {rt8}")
 end
 
--- Batch mode: collect names per milestone for 1s, then announce together.
+-- Cause-of-death tracking: UNIT_DIED carries no killing blow, so remember
+-- the last damaging event against each group member (keyed by GUID).
+local lastDamage = {} -- { [destGUID] = { cause = "...", time = GetTime() } }
+local CAUSE_FRESHNESS = 2 -- seconds; ignore stale damage
+
+local ENVIRONMENT_CAUSE = {
+    FALLING  = "fell to their death",
+    DROWNING = "drowned",
+    FATIGUE  = "succumbed to fatigue",
+    FIRE     = "burned to death",
+    LAVA     = "took a lava bath",
+    SLIME    = "dissolved in slime",
+}
+
+-- Spell school bitmask -> damage type name
+local SCHOOL_NAME = {
+    [1]  = "physical",
+    [2]  = "holy",
+    [4]  = "fire",
+    [8]  = "nature",
+    [16] = "frost",
+    [32] = "shadow",
+    [64] = "arcane",
+}
+
+local function SchoolName(school)
+    return SCHOOL_NAME[school] or "magic"
+end
+
+-- Build a "cause" string from a combat-log damage subevent
+local function ParseCause(subevent, sourceName, ...)
+    if subevent == "ENVIRONMENTAL_DAMAGE" then
+        local envType = ...
+        return ENVIRONMENT_CAUSE[envType] or ("died to " .. (envType or "the environment"):lower())
+    elseif subevent == "SWING_DAMAGE" then
+        if sourceName then
+            return "slain by " .. sourceName .. "'s melee (physical)"
+        end
+        return "slain by melee (physical)"
+    elseif subevent == "SPELL_DAMAGE" or subevent == "SPELL_PERIODIC_DAMAGE"
+        or subevent == "RANGE_DAMAGE" then
+        local _, spellName, spellSchool = ...
+        local school = " (" .. SchoolName(spellSchool) .. ")"
+        if sourceName and spellName then
+            return "slain by " .. sourceName .. "'s " .. spellName .. school
+        elseif spellName then
+            return "killed by " .. spellName .. school
+        elseif sourceName then
+            return "slain by " .. sourceName .. school
+        end
+    end
+    return nil
+end
+
+local function RecordDamage(destGUID, cause)
+    if destGUID and cause then
+        lastDamage[destGUID] = { cause = cause, time = GetTime() }
+    end
+end
+
+-- Look up (and consume) a fresh cause of death for a GUID
+local function GetCause(destGUID)
+    local entry = lastDamage[destGUID]
+    lastDamage[destGUID] = nil
+    if entry and (GetTime() - entry.time) <= CAUSE_FRESHNESS then
+        return entry.cause
+    end
+    return nil
+end
+
+-- Batch mode: collect entries per milestone for 1s, then announce together.
 -- Explicit setting, or forced on in raid.
-local pendingMilestones = {} -- { [count] = { name1, name2, ... } }
+local pendingMilestones = {} -- { [count] = { {name=,cause=}, ... } }
 
 local function IsBatching()
     return ns.db.fnc.batch or IsInRaid()
 end
 
-local function QueueMilestone(name, count)
+local function QueueMilestone(entry, count)
     if not pendingMilestones[count] then
         pendingMilestones[count] = {}
         C_Timer.After(1, function()
-            local names = pendingMilestones[count]
+            local entries = pendingMilestones[count]
             pendingMilestones[count] = nil
-            if names and #names > 0 then
-                AnnounceMilestone(names, count)
+            if entries and #entries > 0 then
+                AnnounceMilestone(entries, count)
             end
         end)
     end
-    table.insert(pendingMilestones[count], name)
+    table.insert(pendingMilestones[count], entry)
 end
 
-local function AnnounceDeath(name, count)
+local function AnnounceDeath(name, count, cause)
+    local entry = { name = name, cause = cause }
+
     -- First blood = first recorded death of the run (never batched)
     local total = 0
     for _, c in pairs(ns.db.fnc.deaths) do
         total = total + c
     end
     if total == 1 then
-        ns.copypasta.SendToCanonicalChannel("First blood! " .. name .. " BloodTrail  " .. count .. " {rt8}")
+        ns.copypasta.SendToCanonicalChannel(
+            "First blood! " .. name .. ", " .. cause .. " BloodTrail  " .. count .. " {rt8}")
         return
     end
 
     if MILESTONES[count] then
         if IsBatching() then
-            QueueMilestone(name, count)
+            QueueMilestone(entry, count)
         else
-            AnnounceMilestone({ name }, count)
+            AnnounceMilestone({ entry }, count)
         end
     end
 end
 
 -- Record a player death
-local function OnUnitDied(destName, destFlags)
+local function OnUnitDied(destGUID, destName, destFlags)
     if bit.band(destFlags, COMBATLOG_OBJECT_TYPE_PLAYER) == 0 then return end
     if not destName then return end
     local unit = GetGroupMembers()[destName]
     if not unit then return end
     -- Feign Death fires UNIT_DIED too; a feigned hunter is still alive
     if UnitIsFeignDeath(unit) or UnitHealth(unit) > 0 then return end
+    local cause = GetCause(destGUID) or "unknown causes"
     local deaths = ns.db.fnc.deaths
     deaths[destName] = (deaths[destName] or 0) + 1
-    ns.Print("|cffFFD700[FnC]|r " .. destName .. " died. (" .. deaths[destName] .. ")")
-    AnnounceDeath(destName, deaths[destName])
+    ns.Print("|cffFFD700[FnC]|r " .. destName .. " died — " .. cause .. ". (" .. deaths[destName] .. ")")
+    AnnounceDeath(destName, deaths[destName], cause)
 end
 
 fncFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
         local timestamp, subevent, hideCaster,
               sourceGUID, sourceName, sourceFlags, sourceRaidFlags,
-              destGUID, destName, destFlags = CombatLogGetCurrentEventInfo()
+              destGUID, destName, destFlags, destRaidFlags = CombatLogGetCurrentEventInfo()
         if subevent == "UNIT_DIED" then
-            OnUnitDied(destName, destFlags)
+            OnUnitDied(destGUID, destName, destFlags)
+        elseif subevent:find("_DAMAGE", 1, true) then
+            RecordDamage(destGUID, ParseCause(subevent, sourceName, select(12, CombatLogGetCurrentEventInfo())))
         end
     end
 end)
