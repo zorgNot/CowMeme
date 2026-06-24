@@ -34,13 +34,6 @@ ns.copypasta.Register("Softy", {
     },
 })
 
-ns.copypasta.Register("Mcian", {
-    chars = { "Javstar" },
-    lines = {
-        "theyre putting something in mcians water that makes him pee",
-    },
-})
-
 ns.copypasta.Register("Large", {
     chars = { "Largehands", "Phallussy", "Lil" },
     lines = {
@@ -147,6 +140,7 @@ ns.copypasta.Register("mcian", {
        "every niche internet community eventually leads back to mcian. you ask where a copypasta came from and suddenly he's explaining a forum that had 37 members and was active for six weeks in 2011. keeper of forbidden texts.",
        "brother could grind a diamond star into dust. if a game contains a progress bar mcian's already halfway through it before normal people finish reading the tooltip. genuinely concerning hand-to-mouse conversion rate.",
        "Every guild got one female blood elf paladin. MCIAN somehow became all of them simultaneously. private server veteran, SSF exile, tuna enthusiast, blood elf princess. impossible stat allocation.",
+        "theyre putting something in mcians water that makes him pee",
    },
 })
 
@@ -158,4 +152,58 @@ ns.copypasta.Register("tom", {
        "Brother chose bear druid then immediately started unionizing against tanking. \"have we considered alternatives?\" YES. YOU. THAT'S WHY YOU'RE HERE. PLEASE HIT THE BOSS.",
        "every pull a community event to discover who gets aggro first. Bageltom pioneering low-threat tanking. looked at Karazhan and said \"what if somebody else did my job?\" revolutionary research."
    },
+})
+
+ns.copypasta.Register("Pink", {
+    chars = { "Pìnksocket", "Scsihole", },
+    lines = {
+       "PÌNKSOCKET FOUND IN A KARA PUG LIKE A SHINY POKEMON!!!!!! cow clicked inspect and accidentally recruited an entire expansion worth of aura farmers. bro arrived with a full prebuilt friend group DLC already installed.",
+       "PINKSOCKET got that \"lol first time here?\" energy while perfectly positioning every pull, carrying threat, cracking jokes, and casually revealing he's got enough gladiator titles to wallpaper Shattrath.",
+       "PÌNK holy shock arena player btw!!!!!! voluntarily pressing the funny button in rated PvP like he's cooking experimental cuisine. somehow still wins. opponents leave queue and pursue higher education.",
+       "PÌNK stacking so much spell power he's basically a balance druid wearing plate. shield says tank. gear says caster. threat says YES. physics says absolutely not.",
+   },
+})
+
+ns.copypasta.Register("zaby", {
+    chars = { "Zabyhunter", "Zabydruid","Zabypriest" },
+    lines = {
+       "ZABYDISPEL INCIDENT still classified. Krosh shield removed with frame perfect precision. Mikeymage instantly experiencing new and exciting forms of fire damage. chat moving too fast for investigators to intervene.",
+       "every time BAT PENETRAR starts pathing through Tempest Keep i hear the Windows XP error noise. ZABY pet got autonomous decision making and immediately chose domestic terrorism.",
+       "Zaby got that \"lol it'll be fine\" aura while actively increasing raid entropy by 400%. somehow wipes less than the spreadsheet people. impossible leadership technology.",
+       "ZABYDRUID spotted in the wild!!!!!! nature is healing. balance has been restored. immediately shapeshifts into hunter mentally. researchers baffled. druid license under review.",
+       "Marksben posts one cursed anime image. Zaby reacts in 0.2 seconds. suddenly 11 people offline, 3 officers typing essays, and Largehands scheduling an emergency meeting. collateral damage parse orange.",
+       "",
+   },
+})
+
+ns.copypasta.Register("Dinadin", {
+    chars = { "Dinadin", "Dinadina","Repurge" },
+    lines = {
+       "DINADIN naming philosophy: paladin? PALADIN in the name. shaman? PURGE in the name. next character gonna be Warriorwarrior. brother looked at creativity and pressed SKIP INTRO.",
+       "DINADIN spent 400 hours simming seal twists and exactly 4 seconds naming characters. PALADIN -> DINADIN. SHAMAN -> REPURGE. next expansion introducing HUNTERSHOT and MAGECAST. revolutionary creativity.",
+       "DINADIN got that encyclopedia gamer build. ask literally any mechanic? instant answer. ask for a toon name? windows xp shutdown noise. brain entering safe mode.",
+       "asked Moist to roast Dinadin. brother rolled a 3 on creativity and passed. honestly the most disrespectful thing Moist has ever done and that's saying something considering his relationship with probability.",
+       "every week Moist invents a new way to vaporize his gold and every week Dinadin watches like a nature documentary narrator. \"fascinating... the idiot returns to the wheel despite previous migration patterns.\""
+   },
+})
+
+ns.copypasta.Register("Mayo", {
+    chars = { "Mâyo" },
+    lines = {
+       "MÂYO brand new warlock. all we know: believes in a thing called love and absolutely lays it down. investigators requesting additional lore. none has been found. enough evidence to top meters.",
+       "MÂYO named after the sauce and somehow that's already top 5 guild lore. shadow bolts creamy. curses emulsified. seed deployed. sandwich technology operating at maximum efficiency.",
+       "mÂyo got summoned into guild, dropped immaculate vibes, whispered \"i believe in a thing called love\" and started pumping. no further questions your honor.",
+       "nobody knows where MÂYO came from. nobody knows where MÂYO goes. all we know is the boss got covered in DoTs and somebody quietly started humming The Darkness.",
+       "mâyo notes if anyone else claims to have carried bined personally all the way to starbucks, they are lying because he used to fly helicopters and airplanes",
+    },
+})
+
+ns.copypasta.Register("Scubastevo", {
+    chars = { "Scubastevo" },
+    lines = {
+       "SCUBASTEVO casting Lightning Bolt with one hand and engineering a craft cocktail with the other. bro got 400 spell power and a garnish rotation. Chain Lightning but make it farm-to-table.",
+       "ELE SHAMAN DETECTED!!!!!! totems down. copper mug deployed. homegrown mint pre-procced. fresh lime squeezed on GCD. Bloodlust active. liver entering execute phase.",
+       "SCUBASTEVO got that elemental bartender spec. Wrath of Air Totem. Totem of Lime. Totem of Copper Mug. Totem of \"nah bro this mint is from my garden.\" absolutely BiS profession choices.",
+       "SCUBASTEVO got that \"one more mule\" scaling. first drink improves DPS. second drink improves vibes. third drink somehow improves both. fourth drink transforms Chain Lightning into freeform jazz."
+    },
 })
