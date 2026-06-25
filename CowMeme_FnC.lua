@@ -151,7 +151,15 @@ end
 -- Cause-of-death tracking: UNIT_DIED carries no killing blow, so remember
 -- the last damaging event against each group member (keyed by GUID).
 local lastDamage = {} -- { [destGUID] = { cause = "...", time = GetTime() } }
-local CAUSE_FRESHNESS = 2 -- seconds; ignore stale damage
+-- Spirit of Redemption defers UNIT_DIED by 15s, so the window must outlast
+-- the angel form; instakills recording a fresh cause keep this safe.
+local CAUSE_FRESHNESS = 16 -- seconds; ignore stale damage
+
+-- Falling deaths fire UNIT_DIED twice (impact + the Spirit of Redemption fade
+-- ~15s later); collapse those into one. Only falling deaths are armed here --
+-- mob/player deaths fire once, so they're never deduped.
+local recentDeaths = {} -- { [destGUID] = GetTime() }
+local DEATH_DEDUP_WINDOW = 16 -- seconds
 
 local ENVIRONMENT_CAUSE = {
     FALLING  = "fell to their death",
@@ -187,6 +195,17 @@ local function ParseCause(subevent, sourceName, ...)
             return "slain by " .. sourceName .. "'s melee (physical)"
         end
         return "slain by melee (physical)"
+    elseif subevent == "SPELL_INSTAKILL" then
+        -- Instant kills (boss mechanics, etc.); fires at the moment of death
+        local _, spellName = ...
+        if sourceName and spellName then
+            return "instantly slain by " .. sourceName .. "'s " .. spellName
+        elseif spellName then
+            return "obliterated by " .. spellName
+        elseif sourceName then
+            return "instantly slain by " .. sourceName
+        end
+        return "instantly killed"
     elseif subevent == "SPELL_DAMAGE" or subevent == "SPELL_PERIODIC_DAMAGE"
         or subevent == "RANGE_DAMAGE" then
         local _, spellName, spellSchool = ...
@@ -271,7 +290,17 @@ local function OnUnitDied(destGUID, destName, destFlags)
     if not unit then return end
     -- Feign Death fires UNIT_DIED too; a feigned hunter is still alive
     if UnitIsFeignDeath(unit) or UnitHealth(unit) > 0 then return end
+    -- A prior falling death armed dedup; this is the SoR-fade re-death, drop it
+    local now = GetTime()
+    if recentDeaths[destGUID] and (now - recentDeaths[destGUID]) < DEATH_DEDUP_WINDOW then
+        recentDeaths[destGUID] = nil
+        return
+    end
     local cause = GetCause(destGUID) or "unknown causes"
+    -- Only falling deaths fire UNIT_DIED twice, so only they arm the dedup
+    if cause == ENVIRONMENT_CAUSE.FALLING then
+        recentDeaths[destGUID] = now
+    end
     local deaths = ns.db.fnc.deaths
     deaths[destName] = (deaths[destName] or 0) + 1
     ns.Print("|cffFFD700[FnC]|r " .. destName .. " died — " .. cause .. ". (" .. deaths[destName] .. ")")
@@ -285,7 +314,7 @@ fncFrame:SetScript("OnEvent", function(self, event, ...)
               destGUID, destName, destFlags, destRaidFlags = CombatLogGetCurrentEventInfo()
         if subevent == "UNIT_DIED" then
             OnUnitDied(destGUID, destName, destFlags)
-        elseif subevent:find("_DAMAGE", 1, true) then
+        elseif subevent:find("_DAMAGE", 1, true) or subevent == "SPELL_INSTAKILL" then
             RecordDamage(destGUID, ParseCause(subevent, sourceName, select(12, CombatLogGetCurrentEventInfo())))
         end
     end
