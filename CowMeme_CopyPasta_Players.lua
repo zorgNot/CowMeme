@@ -207,3 +207,31 @@ ns.copypasta.Register("Scubastevo", {
        "SCUBASTEVO got that \"one more mule\" scaling. first drink improves DPS. second drink improves vibes. third drink somehow improves both. fourth drink transforms Chain Lightning into freeform jazz."
     },
 })
+
+ns.copypasta.Register("Goose", {
+    chars = { "Gigagoose" },
+    lines = {
+       "wrath hardcore speedrunning guild veteran energy. goose doesn’t follow strats, strats update themselves after observing goose behavior for 0.3 seconds.",
+       "goose gets a 99 parse like it’s a side effect. no preparation, no setup, just existence. meanwhile the rest of the raid is still arguing about pull timer and he’s already done the fight in another timeline.",
+       "GIGAGOOGE doesn't compete with guildies, he calibrates them. suddenly everyone else is aware they are operating at approximately “cowman baseline performance.”",
+       "goose doesn't chase orange parses. orange parses chase HIM. briefly considered grey parsing out of respect but decided that would be unethical.",
+       "gchat sees{rt1}goose{rt5}log{rt3}damage and{rt4}goes{rt6}quiet{rt1}in{rt2}that{rt5}very specific{rt3}way{rt6}where everyone{rt4}realizes{rt1}they{rt5}are{rt2}in{rt3}a{rt6}group hobby{rt4}with{rt1}a{rt5}professional{rt2}athlete",
+    },
+})
+
+ns.copypasta.Register("Treyway", {
+    chars = { "Treywayt" },
+    lines = {
+       "treywayt. no mic. no chat. no emotes. just /dance once per raid then proceeds to delete half the boss HP bar with pure silence and windfury autism.",
+       "TREYWAYT logs in, drops totems, auto-pilots rotation, maybe looks at Netflix on second monitor spiritually, logs out. combat log says “present.”",
+       "raid wipes: everyone talks. raid succeeds: everyone talks. TREYWAYT: unchanged. same keys, same silence, same exit.",
+       "if you check logs mid raid and see TREYWAYT top 6 you just close Warcraft Logs immediately because it feels like looking at something you shouldn’t understand.",
+    },
+})
+
+ns.copypasta.Register("Locklando", {
+    chars = { "Locklando" },
+    lines = {
+       "for the love of god all i know about locklando is he did a good job tanking the blind spinning boss when large is out",
+    },
+})

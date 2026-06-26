@@ -121,12 +121,12 @@ end
 -- Per-character death milestone announcements.
 -- %s is the subject including verb, e.g. "Bob is" or "Bob and Alice are".
 local MILESTONES = {
-    [3]  = "%s on a dying spree!",
-    [5]  = "%s afterlifing!",
-    [7]  = "%s on a mega dead streak!",
-    [10] = "%s unBOPable!",
-    [12] = "%s wicked dead!",
-    [14] = "%s on a monster floor streak!",
+    [3]  = "%s ON A DYING SPREE!",
+    [5]  = "%s AFTERLIFING!",
+    [7]  = "%s ON A MEGA DEAD STREAK!",
+    [10] = "%s UNBOPABLE!",
+    [12] = "%s WICKED DEAD!",
+    [14] = "%s ON A MONSTER FLOOR STREAK!",
     [15] = "%s FLOORMAXXING!",
 }
 
