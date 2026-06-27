@@ -235,3 +235,36 @@ ns.copypasta.Register("Locklando", {
        "for the love of god all i know about locklando is he did a good job tanking the blind spinning boss when large is out",
     },
 })
+
+ns.copypasta.Register("Usalty", {
+    chars = { "Usalty" },
+    lines = {
+       "GUILD ANNOUNCEMENT: Usalty has been temporarily suspended from gamba for occupational health reasons. doctors citing acute gold deficiency after repeated exposure to Moist's economic theories.",
+       "USALTY actually S-tier name. logged in, cooked once, never needed another reroll. meanwhile half the guild out here naming characters DINADIN and REPURGE. generational gap.",
+       "Usalty got that Pìnksocket apprentice aura. chill. unbothered. healing everyone. meanwhile the rest of raid inventing fresh ways to lose HP for educational purposes.",
+       "Usalty's HoTs hit harder because PARATESTIEZ is standing within passive aura range. don't ask for logs. don't ask for evidence. open your third eye.",
+       "raid gamba victims anonymous meeting: Moist speaking. Usalty sitting in the back wearing sunglasses refusing to make eye contact. \"i've been clean for three lockouts.\""
+
+    },
+})
+
+ns.copypasta.Register("Mikey", {
+    chars = { "Mikeymage","Acrobat" },
+    lines = {
+       "YOOOOO MIKEYYYYY!!!!!! nobody has ever said \"hey michael.\" impossible. biological limitation. guild law states every greeting must be at least 40% louder than necessary. vibes parse permanently orange.",
+       "MICHAEL J MAGE got that legendary aura where every story starts with \"bro you weren't there...\" and immediately spirals into increasingly unverifiable historical events involving extinct trogg civilizations.",
+       "YOOOO MIKEYYYYY!!!!!! raid hasn't even zoned in and Cowman already typing \"table?\" like it's a biological reflex. Michael J Mage spends more time solving Cowman's mana addiction than fighting Illidan.",
+       "Cowman got mage table object permanence debuff. watches Mikey summon it. acknowledges it. turns 14 degrees. immediately asks \"where table?\" Michael J Mage entering his babysitting arc.",
+    },
+})
+
+ns.copypasta.Register("Korpseparty", {
+    chars = { "Korpseparty" },
+    lines = {
+       "KOWPSEPAWTY joins discowd and my bwain immediatewy goes OWO???? UWU????? sowwy guys no mowe cawwouts... he said \"hewwo :)\" and now i'm bwushing wike an idiot.",
+       "i inspect Korpseparty expecting eldritch horrors. instead i get the nicest most understanding little guy imaginable. this is false advertising of the highest order. OWO detected. UWU unavoidable.",
+       "Korpseparty casts Arcane Intellect and suddenly it's \"o_o\" \">_<\" \"/cast Blink\" \"/cast Sheep\" \"sowwy i got CC'd...\" WHO PUT A CUTE MAGE IN MY RAID CHAT AAAAAA",
+       "Korpseparty types one smiley face and my keyboard starts auto-completing \"owo\" \"uwu\" \">///<\" \"hehe...\" i have lost all executive function.",
+    },
+})
+
