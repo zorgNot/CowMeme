@@ -268,3 +268,12 @@ ns.copypasta.Register("Korpseparty", {
     },
 })
 
+ns.copypasta.Register("Drav", {
+    chars = { "Dravork" },
+    lines = {
+       "DRAVORK AKA ABROHAM!!!!!! top 1000 player in the HISTORY OF THE WORLD btw. not server. not region. WORLD. meanwhile sitting in Discord patiently explaining git to Zaby for the 14th time. impossible stat allocation.",
+       "Zaby and Abroham friendship is like putting a golden retriever next to a senior software engineer. one accidentally pulls another pack, the other quietly opens GitHub and fixes reality.",
+       "DRAVORK logs in, tops healing, gives calm advice, reviews code, refuses to elaborate. meanwhile the rest of the guild busy posting yaoi and losing raid gamba. civilization held together by one resto shaman.",
+       "Drav bro got top 1000 gamer hands but uses them for healing random boomers in Black Temple and explaining why Zaby's merge conflicts are \"actually not that bad.\" saint behavior.",
+    },
+})
