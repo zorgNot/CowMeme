@@ -14,6 +14,19 @@ ns.copypasta.Register("Moist", {
     },
 })
 
+-- Extra moist copypasta, because its moist
+ns.copypasta.Register("Moistpvp", {
+    chars = { "Sheazussy", },
+    lines = {
+        "Moist got that quantum rogue gameplay. \"i thought i was vanished.\" you weren't. \"i pre-cloaked.\" nothing happened. \"i evasioned the sap.\" astonishing sequence. arena archaeologists still reconstructing the VOD.",
+        "MOIST opens character sheet in arena the same way Cowman opens bags during raid bosses. there is simply no biological impulse to look at the actual game. UI terrorism. rngesus fucking christ",
+        "moist gameplay powered entirely by prophetic misinputs. presses cloak before CC, evasion before sap, vanish after dying mentally. living two expansions ahead and one global behind.",
+        "every Moist arena review starts with \"okay so my thinking was...\" brother we're 14 assumptions deep before the gates even opened. meanwhile the enemy warrior already deleted his ass in 2 globals.",
+        "MOIST got that \"trust the process\" build. process not found. opens character pane. closes character pane. gets kidney'd. blames latency from 2008. queues again immediately. LOCK IN.",
+        "Moist in raid: loses another 5k to gamba. Moist in arena: loses another game to the inventory screen. different queue, same investment strategy. expected value permanently negative.",
+    },
+})
+
 ns.copypasta.Register("Cowman", {
     chars = { "Cowmahn", "Dowte", "Offalsniffer" },
     lines = {
