@@ -138,24 +138,30 @@ local GAMBA_START_MSG = "CrossGambling: A new game has been started!"
 local gambaFrame = CreateFrame("Frame", "CowMemeGambaFrame", UIParent)
 local activeHost = nil -- sender of the current game's start message, or nil
 
--- Top rolls for the active gamba game: first /roll per player counts
+-- Roll tracking for the active gamba game: first /roll per player counts
 local gambaRolls = {} -- { [playerName] = roll }
-local TOP_ROLLS_SHOWN = 3
+local FOOTER_DURATION = 1 -- seconds the "get fucked" callout stays visible
 
-local function UpdateRollPanel()
-    local list = {}
+-- footer: optional one-shot callout that auto-clears after FOOTER_DURATION
+local function UpdateRollPanel(footer)
+    local topName, topRoll, botName, botRoll
     for name, roll in pairs(gambaRolls) do
-        table.insert(list, { name = name, roll = roll })
+        if not topRoll or roll > topRoll then topName, topRoll = name, roll end
+        if not botRoll or roll < botRoll then botName, botRoll = name, roll end
     end
-    table.sort(list, function(a, b) return a.roll > b.roll end)
-    local lines = { "|cffFFD700Gamba top rolls|r" }
-    if #list == 0 then
+    local lines = { "|cffFFD700Gamba|r" }
+    if not topRoll then
         table.insert(lines, "waiting for rolls...")
+    else
+        table.insert(lines, "Top: " .. topName .. " - " .. topRoll)
+        table.insert(lines, "Bottom: " .. botName .. " - " .. botRoll)
+        table.insert(lines, "Amount: " .. (topRoll - botRoll))
     end
-    for i = 1, math.min(TOP_ROLLS_SHOWN, #list) do
-        table.insert(lines, i .. ". " .. list[i].name .. " - " .. list[i].roll)
-    end
-    ns.panel.Display({ text = table.concat(lines, "\n") })
+    ns.panel.Display({
+        text = table.concat(lines, "\n"),
+        footer = footer,
+        footerDuration = footer and FOOTER_DURATION or nil,
+    })
 end
 
 -- System messages: track "/roll" results while a game is active
@@ -163,13 +169,25 @@ local function OnSystemMsg(msg)
     if not activeHost then return end
     local name, roll, low = msg:match("^(%S+) rolls (%d+) %((%d+)%-%d+%)$")
     if not name or low ~= "1" then return end
-    if gambaRolls[name] == nil then -- first roll counts; rerolls ignored
-        gambaRolls[name] = tonumber(roll)
-        ns.DebugPrint("cp", "gamba: roll recorded: " .. name .. " = " .. roll)
-        UpdateRollPanel()
-    else
+    if gambaRolls[name] ~= nil then -- first roll counts; rerolls ignored
         ns.DebugPrint("cp", "gamba: reroll ignored: " .. name)
+        return
     end
+    local value = tonumber(roll)
+    -- Find the current top before adding this roll; a strictly higher roll
+    -- dethrones it and the old top-holder gets the footer callout.
+    local oldTopName, oldTopRoll
+    for n, r in pairs(gambaRolls) do
+        if not oldTopRoll or r > oldTopRoll then oldTopName, oldTopRoll = n, r end
+    end
+    gambaRolls[name] = value
+    local footer
+    if oldTopRoll and value > oldTopRoll then
+        footer = oldTopName .. " get fucked"
+        ns.DebugPrint("cp", "gamba: new top " .. name .. " (" .. value .. "), " .. oldTopName .. " dethroned")
+    end
+    ns.DebugPrint("cp", "gamba: roll recorded: " .. name .. " = " .. roll)
+    UpdateRollPanel(footer)
 end
 
 local function OnGambaChat(msg, sender)
@@ -285,6 +303,7 @@ function cp.PrintCommands()
     if ns.db.debug then
         print("  |cffffff00/cp simgamba <chat line>|r - (debug) feed a fake line to the gamba monitor")
         print("  |cffffff00/cp simroll <name> <n>|r   - (debug) feed a fake /roll to the top-roll tracker")
+        print("  |cffffff00/cp simdemo|r              - (debug) run the full gamba demo (rolls + pasta)")
     end
 end
 
@@ -316,6 +335,27 @@ local function HandleSlash(input)
         ns.ForceSandbox(3)
         ns.Print("|cffFFD700[CopyPasta]|r sim: feeding line to gamba monitor (as SimHost): " .. line)
         OnGambaChat(line, "SimHost")
+        return
+    end
+
+    -- "/cp simdemo" runs the full gamba flow: game start, a few rolls, then
+    -- the host's "owes" line firing a pasta -- staggered so it's watchable.
+    if lowerInput:match("^simdemo") then
+        if not (ns.db and ns.db.debug) then
+            ns.Print("|cffFFD700[CopyPasta]|r Debug mode required: /cm debug on")
+            return
+        end
+        ns.Print("|cffFFD700[CopyPasta]|r sim: running gamba demo (sandboxed, ~5s)...")
+        ns.ForceSandbox(7)
+        OnGambaChat(GAMBA_START_MSG, "SimHost")
+        C_Timer.After(1, function() OnSystemMsg("Beaglz rolls 42 (1-100)") end)
+        C_Timer.After(2, function() OnSystemMsg("Bagelbob rolls 43 (1-100)") end)
+        C_Timer.After(3, function() OnSystemMsg("Soffty rolls 87 (1-100)") end) 
+        C_Timer.After(4, function() OnSystemMsg("Moistorcs rolls 3 (1-100)") end)
+        C_Timer.After(5, function()
+            ns.ForceSandbox(3)
+            OnGambaChat("Moistorcs owes 84g", "SimHost")
+        end)
         return
     end
 

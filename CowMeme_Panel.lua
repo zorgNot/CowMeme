@@ -41,17 +41,18 @@ local text = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 text:SetJustifyH("CENTER")
 text:SetJustifyV("MIDDLE")
 
+-- Smaller line pinned to the bottom, for secondary/flavor text
+local footer = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+footer:SetPoint("BOTTOMLEFT", 6, 6)
+footer:SetPoint("BOTTOMRIGHT", -6, 6)
+footer:SetJustifyH("CENTER")
+
 -- Anchor the text region below the image when one is shown, otherwise
--- let it fill the panel
+-- let it fill the panel; the bottom always leaves room for the footer.
 local function LayoutText(hasImage)
     text:ClearAllPoints()
-    if hasImage then
-        text:SetPoint("TOPLEFT", 10, -(24 + IMAGE_SIZE + 4))
-        text:SetPoint("BOTTOMRIGHT", -10, 8)
-    else
-        text:SetPoint("TOPLEFT", 10, -24)
-        text:SetPoint("BOTTOMRIGHT", -10, 8)
-    end
+    text:SetPoint("TOPLEFT", 10, hasImage and -(24 + IMAGE_SIZE + 4) or -24)
+    text:SetPoint("BOTTOMRIGHT", -10, 20)
 end
 LayoutText(false)
 
@@ -68,11 +69,14 @@ frame:SetScript("OnDragStop", function(self)
 end)
 
 -- Show content on the panel. opts:
---   text     - string to display
---   image    - texture path (e.g. "Interface\\AddOns\\CowMeme\\images\\image")
---   duration - seconds until the content auto-clears (omit to persist)
+--   text           - string to display
+--   image          - texture path (e.g. "Interface\\AddOns\\CowMeme\\images\\image")
+--   footer         - smaller secondary line pinned to the bottom
+--   footerDuration - seconds until the footer alone clears (omit to persist)
+--   duration       - seconds until all content auto-clears (omit to persist)
 -- Respects the panel's shown setting: content is dropped while hidden.
 local clearTimer
+local footerTimer
 function panel.Display(opts)
     if not ns.db.panel.shown then return end
     opts = opts or {}
@@ -85,6 +89,17 @@ function panel.Display(opts)
         LayoutText(false)
     end
     text:SetText(opts.text or "")
+    footer:SetText(opts.footer or "")
+    if footerTimer then
+        footerTimer:Cancel()
+        footerTimer = nil
+    end
+    if opts.footer and opts.footerDuration then
+        footerTimer = C_Timer.NewTimer(opts.footerDuration, function()
+            footerTimer = nil
+            footer:SetText("")
+        end)
+    end
     frame:Show()
     if clearTimer then
         clearTimer:Cancel()
@@ -101,6 +116,11 @@ end
 -- Clear content, keeping the panel itself where it is
 function panel.Clear()
     text:SetText("")
+    footer:SetText("")
+    if footerTimer then
+        footerTimer:Cancel()
+        footerTimer = nil
+    end
     image:Hide()
     LayoutText(false)
 end
