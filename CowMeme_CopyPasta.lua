@@ -110,12 +110,34 @@ local GAMBA_CHAT_EVENTS = {
     "CHAT_MSG_CHANNEL",
 }
 
-local gambaFrame = CreateFrame("Frame", "CowMemeGambaFrame", UIParent)
-local lastGambaTrigger = 0
+-- The CrossGambling addon announces this when a game opens; its sender is
+-- the game host, the only player whose "owes" lines we trust.
+local GAMBA_START_MSG = "CrossGambling: A new game has been started!"
 
-local function OnGambaChat(msg)
+local gambaFrame = CreateFrame("Frame", "CowMemeGambaFrame", UIParent)
+local activeHost = nil -- sender of the current game's start message, or nil
+
+local function OnGambaChat(msg, sender)
+    -- A new game announces itself; remember its host
+    if msg:find(GAMBA_START_MSG, 1, true) then
+        activeHost = sender
+        ns.DebugPrint("cp", "gamba: new game started, host = " .. tostring(sender))
+        return
+    end
+
     local name = msg:match("(%S+) owes ")
     if not name then return end
+
+    -- Only the current game's host can trigger a pasta
+    if not activeHost then
+        ns.DebugPrint("cp", "gamba: \"" .. name .. " owes\" ignored (no active game)")
+        return
+    end
+    if sender ~= activeHost then
+        ns.DebugPrint("cp", "gamba: \"owes\" from " .. tostring(sender) ..
+            " ignored (host is " .. activeHost .. ")")
+        return
+    end
 
     -- Strip realm suffix if present (Name-Realm)
     name = name:match("^([^%-]+)") or name
@@ -125,21 +147,17 @@ local function OnGambaChat(msg)
         return
     end
 
-    -- Throttle so a burst of "owes" lines doesn't spam pastas
-    local sinceLast = GetTime() - lastGambaTrigger
-    if sinceLast < 5 then
-        ns.DebugPrint("cp", string.format("gamba: throttled (%.1fs left)", 5 - sinceLast))
-        return
-    end
-    lastGambaTrigger = GetTime()
-
-    ns.DebugPrint("cp", "gamba: \"" .. name .. "\" resolved to " .. key .. ", firing pasta")
+    ns.DebugPrint("cp", "gamba: \"" .. name .. "\" resolved to " .. key ..
+        ", firing pasta; game ends")
     local line = BuildMessage(entry.lines[math.random(1, #entry.lines)])
     cp.SendToCanonicalChannel(line)
+
+    -- Game over: forget the host until the next game starts
+    activeHost = nil
 end
 
-gambaFrame:SetScript("OnEvent", function(self, event, msg)
-    OnGambaChat(msg)
+gambaFrame:SetScript("OnEvent", function(self, event, msg, sender)
+    OnGambaChat(msg, sender)
 end)
 
 local function RegisterGambaEvents()
@@ -226,12 +244,15 @@ local function HandleSlash(input)
         end
         local line = strtrim(input:sub(#"simgamba" + 1))
         if line == "" then
-            ns.Print("|cffFFD700[CopyPasta]|r Usage: /cp simgamba <chat line>  (e.g. /cp simgamba Moistorcs owes 50g)")
+            ns.Print("|cffFFD700[CopyPasta]|r Usage: /cp simgamba <chat line>  (fed as sender 'SimHost')")
+            print("  Start a game first, then an owes line from the same sender, e.g.:")
+            print("    |cffffff00/cp simgamba CrossGambling: A new game has been started!|r")
+            print("    |cffffff00/cp simgamba Moistorcs owes 50g|r")
             return
         end
         ns.ForceSandbox(3)
-        ns.Print("|cffFFD700[CopyPasta]|r sim: feeding line to gamba monitor: " .. line)
-        OnGambaChat(line)
+        ns.Print("|cffFFD700[CopyPasta]|r sim: feeding line to gamba monitor (as SimHost): " .. line)
+        OnGambaChat(line, "SimHost")
         return
     end
 
