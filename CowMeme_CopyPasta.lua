@@ -76,6 +76,19 @@ local function Resolve(input)
     return key and cp.registry[key], key
 end
 
+-- Panel display when a pasta fires. Registry entries may carry an optional
+-- per-player image field; the addon icon is the fallback.
+local DEFAULT_PASTA_IMAGE = "Interface\\AddOns\\CowMeme\\images\\image"
+local PASTA_PANEL_DURATION = 8
+
+local function ShowPastaOnPanel(key, entry)
+    ns.panel.Display({
+        image = entry.image or DEFAULT_PASTA_IMAGE,
+        text = "|cffFFD700" .. key .. "|r got pasta'd!",
+        duration = PASTA_PANEL_DURATION,
+    })
+end
+
 -- Pick a random line and send to chat
 function cp.Send(input, channel)
     local entry, key = Resolve(input)
@@ -101,6 +114,7 @@ function cp.Send(input, channel)
     end
 
     SendChatMessage(line, channel)
+    ShowPastaOnPanel(key, entry)
 end
 
 -- Gamba monitor: watch chat for "<character> owes ..." and fire a
@@ -114,6 +128,7 @@ local GAMBA_CHAT_EVENTS = {
     "CHAT_MSG_RAID_LEADER",
     "CHAT_MSG_GUILD",
     "CHAT_MSG_CHANNEL",
+    "CHAT_MSG_SYSTEM", -- /roll results, for top-roll tracking
 }
 
 -- The CrossGambling addon announces this when a game opens; its sender is
@@ -123,11 +138,47 @@ local GAMBA_START_MSG = "CrossGambling: A new game has been started!"
 local gambaFrame = CreateFrame("Frame", "CowMemeGambaFrame", UIParent)
 local activeHost = nil -- sender of the current game's start message, or nil
 
+-- Top rolls for the active gamba game: first /roll per player counts
+local gambaRolls = {} -- { [playerName] = roll }
+local TOP_ROLLS_SHOWN = 3
+
+local function UpdateRollPanel()
+    local list = {}
+    for name, roll in pairs(gambaRolls) do
+        table.insert(list, { name = name, roll = roll })
+    end
+    table.sort(list, function(a, b) return a.roll > b.roll end)
+    local lines = { "|cffFFD700Gamba top rolls|r" }
+    if #list == 0 then
+        table.insert(lines, "waiting for rolls...")
+    end
+    for i = 1, math.min(TOP_ROLLS_SHOWN, #list) do
+        table.insert(lines, i .. ". " .. list[i].name .. " - " .. list[i].roll)
+    end
+    ns.panel.Display({ text = table.concat(lines, "\n") })
+end
+
+-- System messages: track "/roll" results while a game is active
+local function OnSystemMsg(msg)
+    if not activeHost then return end
+    local name, roll, low = msg:match("^(%S+) rolls (%d+) %((%d+)%-%d+%)$")
+    if not name or low ~= "1" then return end
+    if gambaRolls[name] == nil then -- first roll counts; rerolls ignored
+        gambaRolls[name] = tonumber(roll)
+        ns.DebugPrint("cp", "gamba: roll recorded: " .. name .. " = " .. roll)
+        UpdateRollPanel()
+    else
+        ns.DebugPrint("cp", "gamba: reroll ignored: " .. name)
+    end
+end
+
 local function OnGambaChat(msg, sender)
     -- A new game announces itself; remember its host
     if msg:find(GAMBA_START_MSG, 1, true) then
         activeHost = sender
+        wipe(gambaRolls)
         ns.DebugPrint("cp", "gamba: new game started, host = " .. tostring(sender))
+        UpdateRollPanel()
         return
     end
 
@@ -157,13 +208,18 @@ local function OnGambaChat(msg, sender)
         ", firing pasta; game ends")
     local line = BuildMessage(entry.lines[math.random(1, #entry.lines)])
     cp.SendToCanonicalChannel(line)
+    ShowPastaOnPanel(key, entry)
 
     -- Game over: forget the host until the next game starts
     activeHost = nil
 end
 
 gambaFrame:SetScript("OnEvent", function(self, event, msg, sender)
-    OnGambaChat(msg, sender)
+    if event == "CHAT_MSG_SYSTEM" then
+        OnSystemMsg(msg)
+    else
+        OnGambaChat(msg, sender)
+    end
 end)
 
 local function RegisterGambaEvents()
@@ -228,6 +284,7 @@ function cp.PrintCommands()
     print("  |cffffff00/cp gamba [on|off]|r  - toggle the 'owes' chat monitor")
     if ns.db.debug then
         print("  |cffffff00/cp simgamba <chat line>|r - (debug) feed a fake line to the gamba monitor")
+        print("  |cffffff00/cp simroll <name> <n>|r   - (debug) feed a fake /roll to the top-roll tracker")
     end
 end
 
@@ -259,6 +316,22 @@ local function HandleSlash(input)
         ns.ForceSandbox(3)
         ns.Print("|cffFFD700[CopyPasta]|r sim: feeding line to gamba monitor (as SimHost): " .. line)
         OnGambaChat(line, "SimHost")
+        return
+    end
+
+    -- "/cp simroll <name> <n>" feeds a fake /roll to the top-roll tracker
+    if lowerInput:match("^simroll") then
+        if not (ns.db and ns.db.debug) then
+            ns.Print("|cffFFD700[CopyPasta]|r Debug mode required: /cm debug on")
+            return
+        end
+        local rollName, rollValue = input:match("^%S+%s+(%S+)%s+(%d+)")
+        if not rollName then
+            ns.Print("|cffFFD700[CopyPasta]|r Usage: /cp simroll <name> <number>  (needs an active game; see /cp simgamba)")
+            return
+        end
+        ns.Print("|cffFFD700[CopyPasta]|r sim: roll " .. rollName .. " = " .. rollValue)
+        OnSystemMsg(rollName .. " rolls " .. rollValue .. " (1-100)")
         return
     end
 
@@ -302,13 +375,14 @@ local function HandleSlash(input)
 
     if channel ~= "" and tonumber(channel) then
         local num = tonumber(channel)
-        local entry = Resolve(name)
+        local entry, key = Resolve(name)
         if not entry then
             ns.Print("|cffFFD700[CopyPasta]|r Unknown character \"" .. name .. "\".")
             return
         end
         local msg = BuildMessage(entry.lines[math.random(1, #entry.lines)])
         SendChatMessage(msg, "CHANNEL", nil, num)
+        ShowPastaOnPanel(key, entry)
         return
     end
 

@@ -41,6 +41,7 @@ function ns.OnLoad()
     CowMemeDB = ApplyDefaults(CowMemeDB, ns.defaults)
     ns.db = CowMemeDB
     ns.sync.Init()
+    ns.panel.Init()
     ns.fnc.Init()
     ns.copypasta.Init()
 end
@@ -122,7 +123,13 @@ local helpDetails = {
     status = {
         "|cffffff00/cm status|r",
         "Show current settings: addon enabled/debug, FnC tracking and batch mode,",
-        "and the CopyPasta gamba monitor state.",
+        "the CopyPasta gamba monitor, sync leader, and panel state.",
+    },
+    panel = {
+        "|cffffff00/cm panel [show|hide|lock|unlock|reset|clear|test]|r",
+        "The CowMeme content panel: a small movable frame for images and text",
+        "(copypasta art, gamba top rolls, etc). Unlocked by default -- drag it",
+        "anywhere; its position is saved. Bare /cm panel shows the menu and state.",
     },
 }
 
@@ -132,6 +139,7 @@ commands["help"] = function()
     print("  |cffffff00/cm enable|r      - enable the addon")
     print("  |cffffff00/cm disable|r     - disable the addon")
     print("  |cffffff00/cm debug|r       - debug menu (tracing, sandbox, sim commands)")
+    print("  |cffffff00/cm panel|r       - content panel menu (show/hide/lock/move)")
     print("  |cffffff00/cm status|r      - show current settings")
     print("  |cffffff00/fnc help|r       - Fast and Clean death tracker (see for details)")
     print("  |cffffff00/cp help|r        - CopyPasta (see for details)")
@@ -197,6 +205,44 @@ commands["debug"] = function(arg)
         print("  |cffffff00/fnc simdeath <name>|r          - simulate a death (pair with simdamage)")
         print("  |cffffff00/fnc simbatch <milestone> <n>|r - simulate n deaths hitting a milestone")
         print("  |cffffff00/cp simgamba <chat line>|r      - feed a fake line to the gamba monitor")
+        print("  |cffffff00/cp simroll <name> <n>|r        - feed a fake /roll to the top-roll tracker")
+    end
+end
+
+commands["panel"] = function(arg)
+    local sub = (arg or ""):lower()
+    if sub == "show" then
+        ns.panel.SetShown(true)
+        ns.Print("Panel shown.")
+    elseif sub == "hide" then
+        ns.panel.SetShown(false)
+        ns.Print("Panel hidden.")
+    elseif sub == "lock" then
+        ns.panel.SetLocked(true)
+        ns.Print("Panel locked.")
+    elseif sub == "unlock" then
+        ns.panel.SetLocked(false)
+        ns.Print("Panel unlocked (drag to move).")
+    elseif sub == "reset" then
+        ns.panel.ResetPosition()
+        ns.Print("Panel position reset.")
+    elseif sub == "clear" then
+        ns.panel.Clear()
+        ns.Print("Panel cleared.")
+    elseif sub == "test" then
+        ns.panel.Display({
+            text = "Moo! This clears in 5s.",
+            image = "Interface\\AddOns\\CowMeme\\images\\image",
+            duration = 5,
+        })
+    else
+        ns.Print("Panel menu:")
+        ns.panel.PrintStatus()
+        print("  |cffffff00/cm panel show|hide|r   - show or hide the panel")
+        print("  |cffffff00/cm panel lock|unlock|r - lock or unlock dragging")
+        print("  |cffffff00/cm panel reset|r       - reset position to center")
+        print("  |cffffff00/cm panel clear|r       - clear current content")
+        print("  |cffffff00/cm panel test|r        - show sample content for 5s")
     end
 end
 
@@ -210,6 +256,7 @@ commands["status"] = function()
     ns.fnc.PrintStatus()
     ns.copypasta.PrintStatus()
     ns.sync.PrintStatus()
+    ns.panel.PrintStatus()
 end
 
 local function HandleSlash(input)

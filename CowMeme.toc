@@ -2,13 +2,14 @@
 ## Title: CowMeme
 ## Notes: A moo-velous addon
 ## Author:
-## Version: 1.0.1
+## Version: 1.0.2
 ## DefaultState: enabled
 ## IconTexture: Interface\AddOns\CowMeme\images\image
 ## SavedVariables: CowMemeDB
 
 CowMeme.lua
 CowMeme_Sync.lua
+CowMeme_Panel.lua
 CowMeme_FnC.lua
 CowMeme_CopyPasta.lua
 CowMeme_CopyPasta_Players.lua
