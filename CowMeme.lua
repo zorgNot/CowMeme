@@ -206,7 +206,7 @@ commands["debug"] = function(arg)
         print("  |cffffff00/fnc simbatch <milestone> <n>|r - simulate n deaths hitting a milestone")
         print("  |cffffff00/cp simgamba <chat line>|r      - feed a fake line to the gamba monitor")
         print("  |cffffff00/cp simroll <name> <n>|r        - feed a fake /roll to the top-roll tracker")
-        print("  |cffffff00/cp simdemo|r                   - run the full gamba demo (rolls + pasta)")
+        print("  |cffffff00/cp simdemo [name]|r            - run the gamba demo, optionally targeting a player")
     end
 end
 

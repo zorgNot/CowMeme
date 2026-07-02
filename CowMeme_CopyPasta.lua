@@ -349,7 +349,7 @@ function cp.PrintCommands()
     if ns.db.debug then
         print("  |cffffff00/cp simgamba <chat line>|r - (debug) feed a fake line to the gamba monitor")
         print("  |cffffff00/cp simroll <name> <n>|r   - (debug) feed a fake /roll to the top-roll tracker")
-        print("  |cffffff00/cp simdemo|r              - (debug) run the full gamba demo (rolls + pasta)")
+        print("  |cffffff00/cp simdemo [name]|r       - (debug) run the gamba demo, optionally targeting a player")
     end
 end
 
@@ -384,23 +384,40 @@ local function HandleSlash(input)
         return
     end
 
-    -- "/cp simdemo" runs the full gamba flow: game start, a few rolls, then
-    -- the host's "owes" line firing a pasta -- staggered so it's watchable.
-    if lowerInput:match("^simdemo") then
+    -- "/cp simdemo [name]" runs the full gamba flow: game start, a few rolls,
+    -- then the host's "owes" line firing a pasta -- staggered so it's watchable.
+    -- An optional target name makes that player the loser who gets pasta'd.
+    if lowerInput == "simdemo" or lowerInput:match("^simdemo%s") then
         if not (ns.db and ns.db.debug) then
             ns.Print("|cffFFD700[CopyPasta]|r Debug mode required: /cm debug on")
             return
         end
-        ns.Print("|cffFFD700[CopyPasta]|r sim: running gamba demo (sandboxed, ~5s)...")
-        ns.ForceSandbox(7)
+        local target = strtrim(input:sub(#"simdemo" + 1))
+        if target == "" then target = "Moistorcs" end
+        local entry, key = Resolve(target)
+        if not entry then
+            ns.Print("|cffFFD700[CopyPasta]|r simdemo: unknown target \"" .. target .. "\".")
+            ns.Print("Registered players: " .. cp.ListPlayers())
+            return
+        end
+        ns.Print("|cffFFD700[CopyPasta]|r sim: running gamba demo targeting " .. key .. " (sandboxed, ~6s)...")
+        ns.ForceSandbox(9)
         OnGambaChat(GAMBA_START_MSG, "SimHost")
-        C_Timer.After(1, function() OnSystemMsg("Beaglz rolls 42 (1-100)") end)
-        C_Timer.After(2, function() OnSystemMsg("Bagelbob rolls 43 (1-100)") end)
-        C_Timer.After(3, function() OnSystemMsg("Soffty rolls 87 (1-100)") end) 
-        C_Timer.After(4, function() OnSystemMsg("Moistorcs rolls 3 (1-100)") end)
-        C_Timer.After(5, function()
+        -- Fixed high rollers, skipping any that collide with the target so the
+        -- target's low roll below isn't dropped as a reroll.
+        local t = 1
+        for _, r in ipairs({ { "Beaglz", 42 }, { "Bagelbob", 43 }, { "Soffty", 87 } }) do
+            if r[1]:lower() ~= target:lower() then
+                local nm, rv = r[1], r[2]
+                C_Timer.After(t, function() OnSystemMsg(nm .. " rolls " .. rv .. " (1-100)") end)
+                t = t + 1
+            end
+        end
+        -- Target is the low roller / loser, then owes and gets pasta'd
+        C_Timer.After(t, function() OnSystemMsg(target .. " rolls 3 (1-100)") end)
+        C_Timer.After(t + 1, function()
             ns.ForceSandbox(3)
-            OnGambaChat("Moistorcs owes 84g", "SimHost")
+            OnGambaChat(target .. " owes 84g", "SimHost")
         end)
         return
     end
