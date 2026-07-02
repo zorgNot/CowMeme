@@ -50,10 +50,16 @@ end
 
 -- Send a finished message to the canonical channel, or print it
 -- locally if none is available. Sandbox mode prints locally instead.
+-- Only the elected sync leader speaks, so guildies running the addon
+-- don't all announce the same event.
 function cp.SendToCanonicalChannel(line)
     local channel = GetCanonicalChannel()
     if ns.SandboxActive() then
         ns.Print("|cff00ccff[SANDBOX -> " .. (channel or "no channel") .. "]|r " .. line)
+        return
+    end
+    if not ns.sync.IsLeader() then
+        ns.DebugPrint("cp", "suppressed (leader is " .. ns.sync.GetLeader() .. "): " .. line)
         return
     end
     if channel then

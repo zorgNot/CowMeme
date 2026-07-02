@@ -40,6 +40,7 @@ end
 function ns.OnLoad()
     CowMemeDB = ApplyDefaults(CowMemeDB, ns.defaults)
     ns.db = CowMemeDB
+    ns.sync.Init()
     ns.fnc.Init()
     ns.copypasta.Init()
 end
@@ -139,6 +140,7 @@ end
 
 commands["enable"] = function()
     ns.db.enabled = true
+    ns.sync.ApplyState()
     ns.fnc.ApplyState()
     ns.copypasta.ApplyState()
     ns.Print("Enabled.")
@@ -146,6 +148,7 @@ end
 
 commands["disable"] = function()
     ns.db.enabled = false
+    ns.sync.ApplyState()
     ns.fnc.ApplyState()
     ns.copypasta.ApplyState()
     ns.Print("Disabled.")
@@ -206,6 +209,7 @@ commands["status"] = function()
     print(line)
     ns.fnc.PrintStatus()
     ns.copypasta.PrintStatus()
+    ns.sync.PrintStatus()
 end
 
 local function HandleSlash(input)
