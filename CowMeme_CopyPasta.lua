@@ -49,10 +49,15 @@ local function GetCanonicalChannel()
 end
 
 -- Send a finished message to the canonical channel, or print it
--- locally if none is available
+-- locally if none is available. Sandbox mode prints locally instead.
 function cp.SendToCanonicalChannel(line)
     local channel = GetCanonicalChannel()
+    if ns.SandboxActive() then
+        ns.Print("|cff00ccff[SANDBOX -> " .. (channel or "no channel") .. "]|r " .. line)
+        return
+    end
     if channel then
+        ns.DebugPrint("cp", "canonical channel " .. channel .. ": " .. line)
         SendChatMessage(line, channel)
     else
         ns.Print("|cffFFD700[CopyPasta]|r (no valid channel) " .. line)
@@ -114,13 +119,21 @@ local function OnGambaChat(msg)
 
     -- Strip realm suffix if present (Name-Realm)
     name = name:match("^([^%-]+)") or name
-    local entry = Resolve(name)
-    if not entry or #entry.lines == 0 then return end
+    local entry, key = Resolve(name)
+    if not entry or #entry.lines == 0 then
+        ns.DebugPrint("cp", "gamba: matched \"" .. name .. "\" but no registered player")
+        return
+    end
 
     -- Throttle so a burst of "owes" lines doesn't spam pastas
-    if GetTime() - lastGambaTrigger < 5 then return end
+    local sinceLast = GetTime() - lastGambaTrigger
+    if sinceLast < 5 then
+        ns.DebugPrint("cp", string.format("gamba: throttled (%.1fs left)", 5 - sinceLast))
+        return
+    end
     lastGambaTrigger = GetTime()
 
+    ns.DebugPrint("cp", "gamba: \"" .. name .. "\" resolved to " .. key .. ", firing pasta")
     local line = BuildMessage(entry.lines[math.random(1, #entry.lines)])
     cp.SendToCanonicalChannel(line)
 end
@@ -189,6 +202,9 @@ function cp.PrintCommands()
     print("  |cffffff00/cp <name> <1-9>|r   - send to a numbered channel")
     print("  |cffffff00/cp list|r            - list registered players and chars")
     print("  |cffffff00/cp gamba [on|off]|r  - toggle the 'owes' chat monitor")
+    if ns.db.debug then
+        print("  |cffffff00/cp simgamba <chat line>|r - (debug) feed a fake line to the gamba monitor")
+    end
 end
 
 -- One-line status summary, pulled into the /cm main menu
@@ -201,6 +217,24 @@ end
 
 -- Slash command: /copypasta <charname> [channel]
 local function HandleSlash(input)
+    -- "/cp simgamba <chat line>" needs the raw remainder, so handle it first
+    local lowerInput = input:lower()
+    if lowerInput == "simgamba" or lowerInput:match("^simgamba%s") then
+        if not (ns.db and ns.db.debug) then
+            ns.Print("|cffFFD700[CopyPasta]|r Debug mode required: /cm debug on")
+            return
+        end
+        local line = strtrim(input:sub(#"simgamba" + 1))
+        if line == "" then
+            ns.Print("|cffFFD700[CopyPasta]|r Usage: /cp simgamba <chat line>  (e.g. /cp simgamba Moistorcs owes 50g)")
+            return
+        end
+        ns.ForceSandbox(3)
+        ns.Print("|cffFFD700[CopyPasta]|r sim: feeding line to gamba monitor: " .. line)
+        OnGambaChat(line)
+        return
+    end
+
     local name, channel = input:match("^(%S+)%s*(%S*)")
 
     if not name or name == "" or name:lower() == "help" then

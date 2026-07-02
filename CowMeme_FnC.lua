@@ -231,9 +231,13 @@ local function ParseCause(subevent, sourceName, ...)
     return nil
 end
 
-local function RecordDamage(destGUID, cause)
+local function RecordDamage(destGUID, cause, destName)
     if destGUID and cause then
         lastDamage[destGUID] = { cause = cause, time = GetTime() }
+        -- Guard before building the string: this path runs per damage event
+        if ns.DebugVerbose("fnc") then
+            ns.DebugPrint("fnc", "damage: " .. (destName or destGUID) .. " <- " .. cause)
+        end
     end
 end
 
@@ -241,8 +245,20 @@ end
 local function GetCause(destGUID)
     local entry = lastDamage[destGUID]
     lastDamage[destGUID] = nil
-    if entry and (GetTime() - entry.time) <= CAUSE_FRESHNESS then
+    if not entry then
+        ns.DebugPrint("fnc", "cause lookup: nothing recorded for this GUID")
+        return nil
+    end
+    local age = GetTime() - entry.time
+    if age <= CAUSE_FRESHNESS then
+        if ns.DebugOn("fnc") then
+            ns.DebugPrint("fnc", string.format("cause lookup: hit (%.1fs old): %s", age, entry.cause))
+        end
         return entry.cause
+    end
+    if ns.DebugOn("fnc") then
+        ns.DebugPrint("fnc", string.format("cause lookup: stale (%.1fs old, limit %ds): %s",
+            age, CAUSE_FRESHNESS, entry.cause))
     end
     return nil
 end
@@ -258,15 +274,18 @@ end
 local function QueueMilestone(entry, count)
     if not pendingMilestones[count] then
         pendingMilestones[count] = {}
+        ns.DebugPrint("fnc", "batch: opened 1s window for milestone " .. count)
         C_Timer.After(1, function()
             local entries = pendingMilestones[count]
             pendingMilestones[count] = nil
             if entries and #entries > 0 then
+                ns.DebugPrint("fnc", "batch: flushing milestone " .. count .. " with " .. #entries .. " name(s)")
                 AnnounceMilestone(entries, count)
             end
         end)
     end
     table.insert(pendingMilestones[count], entry)
+    ns.DebugPrint("fnc", "batch: queued " .. entry.name .. " for milestone " .. count)
 end
 
 local function AnnounceDeath(name, count, cause)
@@ -292,18 +311,34 @@ local function AnnounceDeath(name, count, cause)
     end
 end
 
--- Record a player death
-local function OnUnitDied(destGUID, destName, destFlags)
-    if bit.band(destFlags, COMBATLOG_OBJECT_TYPE_PLAYER) == 0 then return end
+-- Record a player death. sim=true (from /fnc simdeath) bypasses the group
+-- and feign/health guards, which can't pass for a fabricated unit.
+local function OnUnitDied(destGUID, destName, destFlags, sim)
+    if bit.band(destFlags, COMBATLOG_OBJECT_TYPE_PLAYER) == 0 then
+        -- Fires for every mob death, so verbose only
+        if ns.DebugVerbose("fnc") then
+            ns.DebugPrint("fnc", "UNIT_DIED ignored (not a player): " .. tostring(destName))
+        end
+        return
+    end
     if not destName then return end
-    local unit = GetGroupMembers()[destName]
-    if not unit then return end
-    -- Feign Death fires UNIT_DIED too; a feigned hunter is still alive
-    if UnitIsFeignDeath(unit) or UnitHealth(unit) > 0 then return end
+    if not sim then
+        local unit = GetGroupMembers()[destName]
+        if not unit then
+            ns.DebugPrint("fnc", "death ignored (not in group): " .. destName)
+            return
+        end
+        -- Feign Death fires UNIT_DIED too; a feigned hunter is still alive
+        if UnitIsFeignDeath(unit) or UnitHealth(unit) > 0 then
+            ns.DebugPrint("fnc", "death ignored (feign/still alive): " .. destName)
+            return
+        end
+    end
     -- A prior falling death armed dedup; this is the SoR-fade re-death, drop it
     local now = GetTime()
     if recentDeaths[destGUID] and (now - recentDeaths[destGUID]) < DEATH_DEDUP_WINDOW then
         recentDeaths[destGUID] = nil
+        ns.DebugPrint("fnc", "death deduped (SoR fade after falling): " .. destName)
         return
     end
     local cause = GetCause(destGUID) or "unknown causes"
@@ -325,7 +360,7 @@ fncFrame:SetScript("OnEvent", function(self, event, ...)
         if subevent == "UNIT_DIED" then
             OnUnitDied(destGUID, destName, destFlags)
         elseif subevent:find("_DAMAGE", 1, true) or subevent == "SPELL_INSTAKILL" then
-            RecordDamage(destGUID, ParseCause(subevent, sourceName, select(12, CombatLogGetCurrentEventInfo())))
+            RecordDamage(destGUID, ParseCause(subevent, sourceName, select(12, CombatLogGetCurrentEventInfo())), destName)
         end
     end
 end)
@@ -377,6 +412,54 @@ fncCommands["reset"] = function() fnc.Reset() end
 fncCommands["stop"] = function() fnc.Stop() end
 fncCommands["report"] = function(arg) fnc.Report(arg) end
 
+-- Sim commands: exercise the real pipeline with fake events. Debug-gated,
+-- and output is forced through the sandbox so it can't reach real chat.
+local function RequireDebug()
+    if ns.db.debug then return true end
+    ns.Print("|cffFFD700[FnC]|r Debug mode required: /cm debug on")
+    return false
+end
+
+fncCommands["simdamage"] = function(arg)
+    if not RequireDebug() then return end
+    local name, cause = (arg or ""):match("^(%S+)%s+(.+)")
+    if not name then
+        ns.Print("|cffFFD700[FnC]|r Usage: /fnc simdamage <name> <cause text>")
+        return
+    end
+    RecordDamage("Sim-" .. name, cause, name)
+    ns.Print("|cffFFD700[FnC]|r sim: recorded damage on " .. name .. ": " .. cause)
+end
+
+fncCommands["simdeath"] = function(arg)
+    if not RequireDebug() then return end
+    local name = arg and strtrim(arg) or ""
+    if name == "" then
+        ns.Print("|cffFFD700[FnC]|r Usage: /fnc simdeath <name>  (run /fnc simdamage first for a cause)")
+        return
+    end
+    ns.ForceSandbox(3)
+    OnUnitDied("Sim-" .. name, name, COMBATLOG_OBJECT_TYPE_PLAYER, true)
+end
+
+fncCommands["simbatch"] = function(arg)
+    if not RequireDebug() then return end
+    local milestone, n = (arg or ""):match("^(%d+)%s+(%d+)")
+    milestone, n = tonumber(milestone), tonumber(n)
+    if not milestone or not MILESTONES[milestone] or not n or n < 1 then
+        local keys = {}
+        for k in pairs(MILESTONES) do table.insert(keys, k) end
+        table.sort(keys)
+        ns.Print("|cffFFD700[FnC]|r Usage: /fnc simbatch <milestone> <count>  (milestones: "
+            .. table.concat(keys, " ") .. ")")
+        return
+    end
+    ns.ForceSandbox(3)
+    for i = 1, math.min(n, 10) do
+        QueueMilestone({ name = "Simmy" .. i, cause = "slain by simulation (physical)" }, milestone)
+    end
+end
+
 -- Printed by /fnc help and pulled into the /cm main menu
 function fnc.PrintCommands()
     ns.Print("|cffFFD700[Fast and Clean]|r commands:")
@@ -390,6 +473,11 @@ function fnc.PrintCommands()
     print("  |cffffff00/fnc batch [on|off]|r - batch milestone announcements (auto-on in raid)")
     print("  |cffffff00/fnc stop|r    - stop tracking")
     print("  |cffffff00/fnc help|r    - show this message")
+    if ns.db.debug then
+        print("  |cffffff00/fnc simdamage <name> <cause>|r - (debug) record fake damage")
+        print("  |cffffff00/fnc simdeath <name>|r          - (debug) simulate a death")
+        print("  |cffffff00/fnc simbatch <milestone> <n>|r - (debug) simulate batched milestones")
+    end
 end
 
 -- One-line status summary, pulled into the /cm main menu
