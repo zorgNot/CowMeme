@@ -129,19 +129,37 @@ gambaFrame:SetScript("OnEvent", function(self, event, msg)
     OnGambaChat(msg)
 end)
 
-function cp.EnableGamba()
-    ns.db.copypasta.gambaMonitor = true
+local function RegisterGambaEvents()
     for _, event in ipairs(GAMBA_CHAT_EVENTS) do
         gambaFrame:RegisterEvent(event)
     end
+end
+
+local function UnregisterGambaEvents()
+    for _, event in ipairs(GAMBA_CHAT_EVENTS) do
+        gambaFrame:UnregisterEvent(event)
+    end
+end
+
+-- Register/unregister the gamba monitor based on the global addon enable flag
+-- and the gambaMonitor setting. Does not change ns.db.copypasta.gambaMonitor.
+function cp.ApplyState()
+    if ns.db.enabled and ns.db.copypasta.gambaMonitor then
+        RegisterGambaEvents()
+    else
+        UnregisterGambaEvents()
+    end
+end
+
+function cp.EnableGamba()
+    ns.db.copypasta.gambaMonitor = true
+    cp.ApplyState()
     ns.Print("|cffFFD700[CopyPasta]|r Gamba monitor |cff00ff00ON|r.")
 end
 
 function cp.DisableGamba()
     ns.db.copypasta.gambaMonitor = false
-    for _, event in ipairs(GAMBA_CHAT_EVENTS) do
-        gambaFrame:UnregisterEvent(event)
-    end
+    cp.ApplyState()
     ns.Print("|cffFFD700[CopyPasta]|r Gamba monitor |cffff0000OFF|r.")
 end
 
@@ -150,9 +168,7 @@ function cp.Init()
     if not ns.db.copypasta then
         ns.db.copypasta = { gambaMonitor = false }
     end
-    if ns.db.copypasta.gambaMonitor then
-        cp.EnableGamba()
-    end
+    cp.ApplyState()
 end
 
 -- Return a formatted list of players and their known characters
@@ -165,17 +181,35 @@ function cp.ListPlayers()
     return #names > 0 and table.concat(names, ", ") or "(none)"
 end
 
+-- Printed by /cp help and pulled into the /cm main menu
+function cp.PrintCommands()
+    ns.Print("|cffFFD700[CopyPasta]|r commands:")
+    print("  |cffffff00/cp <name>|r         - send a random pasta (party/raid/say)")
+    print("  |cffffff00/cp <name> g|r       - send to guild chat")
+    print("  |cffffff00/cp <name> <1-9>|r   - send to a numbered channel")
+    print("  |cffffff00/cp list|r            - list registered players and chars")
+    print("  |cffffff00/cp gamba [on|off]|r  - toggle the 'owes' chat monitor")
+end
+
+-- One-line status summary, pulled into the /cm main menu
+function cp.PrintStatus()
+    local gamba = ns.db.copypasta.gambaMonitor and "|cff00ff00ON|r" or "|cffff0000OFF|r"
+    local n = 0
+    for _ in pairs(cp.registry) do n = n + 1 end
+    print("  |cffFFD700CopyPasta|r: gamba monitor " .. gamba .. ", " .. n .. " players")
+end
+
 -- Slash command: /copypasta <charname> [channel]
 local function HandleSlash(input)
     local name, channel = input:match("^(%S+)%s*(%S*)")
 
     if not name or name == "" or name:lower() == "help" then
-        ns.Print("|cffFFD700[CopyPasta]|r commands:")
-        print("  |cffffff00/copypasta <name>|r         - send a random pasta (party/raid/say)")
-        print("  |cffffff00/copypasta <name> g|r       - send to guild chat")
-        print("  |cffffff00/copypasta <name> <1-9>|r   - send to a numbered channel")
-        print("  |cffffff00/copypasta list|r            - list registered players and chars")
-        print("  |cffffff00/copypasta gamba [on|off]|r  - toggle the 'owes' chat monitor")
+        cp.PrintCommands()
+        return
+    end
+
+    if name:lower() == "status" then
+        cp.PrintStatus()
         return
     end
 

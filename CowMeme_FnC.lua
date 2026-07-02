@@ -12,18 +12,28 @@ ns.defaults.fnc = {
 
 local fncFrame = CreateFrame("Frame", "CowMemeFnCFrame", UIParent)
 
+-- Register/unregister death tracking based on the global addon enable flag and
+-- whether a run is active. Does not change ns.db.fnc.active.
+function fnc.ApplyState()
+    if ns.db.enabled and ns.db.fnc.active then
+        fncFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    else
+        fncFrame:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    end
+end
+
 -- Start a new FnC run
 function fnc.New()
     ns.db.fnc.active = true
     ns.db.fnc.deaths = {}
     ns.Print("|cffFFD700[Fast and Clean]|r Run started. Good luck!")
-    fncFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    fnc.ApplyState()
 end
 
 -- Resume tracking without clearing deaths
 function fnc.Start()
     ns.db.fnc.active = true
-    fncFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    fnc.ApplyState()
     ns.Print("|cffFFD700[Fast and Clean]|r Tracking resumed.")
 end
 
@@ -36,7 +46,7 @@ end
 -- Stop tracking
 function fnc.Stop()
     ns.db.fnc.active = false
-    fncFrame:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    fnc.ApplyState()
     ns.Print("|cffFFD700[Fast and Clean]|r Run stopped.")
 end
 
@@ -325,8 +335,8 @@ function fnc.Init()
     if not ns.db.fnc then
         ns.db.fnc = { active = false, batch = false, deaths = {} }
     end
-    if ns.db.fnc.active then
-        fncFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    fnc.ApplyState()
+    if ns.db.enabled and ns.db.fnc.active then
         ns.Print("|cffFFD700[Fast and Clean]|r Resuming active run.")
     end
 end
@@ -367,7 +377,8 @@ fncCommands["reset"] = function() fnc.Reset() end
 fncCommands["stop"] = function() fnc.Stop() end
 fncCommands["report"] = function(arg) fnc.Report(arg) end
 
-fncCommands["help"] = function()
+-- Printed by /fnc help and pulled into the /cm main menu
+function fnc.PrintCommands()
     ns.Print("|cffFFD700[Fast and Clean]|r commands:")
     print("  |cffffff00/fnc new|r     - start a new run (clears deaths)")
     print("  |cffffff00/fnc start|r   - resume tracking without resetting")
@@ -380,6 +391,19 @@ fncCommands["help"] = function()
     print("  |cffffff00/fnc stop|r    - stop tracking")
     print("  |cffffff00/fnc help|r    - show this message")
 end
+
+-- One-line status summary, pulled into the /cm main menu
+function fnc.PrintStatus()
+    local tracking = ns.db.fnc.active and "|cff00ff00ON|r" or "|cffff0000OFF|r"
+    local batch    = ns.db.fnc.batch  and "|cff00ff00ON|r" or "|cffff0000OFF|r"
+    local n = 0
+    for _ in pairs(ns.db.fnc.deaths) do n = n + 1 end
+    print("  |cffFFD700FnC|r: tracking " .. tracking .. ", batch " .. batch ..
+        " (auto in raid), " .. n .. " tracked")
+end
+
+fncCommands["help"]   = function() fnc.PrintCommands() end
+fncCommands["status"] = function() fnc.PrintStatus() end
 
 local function HandleFnCSlash(input)
     local cmd, arg = strtrim(input):match("^(%S*)%s*(.*)")
