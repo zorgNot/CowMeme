@@ -81,10 +81,50 @@ end
 local DEFAULT_PASTA_IMAGE = "Interface\\AddOns\\CowMeme\\images\\image"
 local PASTA_PANEL_DURATION = 8
 
+-- Loss phrases shown after the player's name on the panel; one picked at
+-- random per pasta. Add more entries here.
+local LOSS_PHRASES = {
+    "donated to the guild economy",
+    "financially outplayed",
+    "gold entered the shadow realm",
+    "wallet diff",
+    "got EV'd",
+    "expected value claimed another victim",
+    "performed liquidity transfer",
+    "converted gold into vibes",
+    "became raid-funded",
+    "got casino'd",
+    "lost to probability mechanics",
+    "gold parsed gray",
+    "invested aggressively",
+    "executed negative ROI rotation",
+    "gamba claimed another soul",
+    "lost the 50/50 (it was 90/10)",
+    "funded the jackpot",
+    "became someone else's payout",
+    "performed charitable donations to Moist",
+    "bankroll entered execute phase",
+    "rolled for bankruptcy",
+    "gold evaporated on contact",
+    "economically griefed himself",
+    "sent his gold to college",
+    "hit the reverse jackpot",
+    "got statistically dismantled",
+    "financially crowd controlled",
+    "lost the GDP check",
+    "gold got redistributed",
+    "wealth transferred to stronger hands",
+}
+
+local function LossPhrase()
+    if #LOSS_PHRASES == 0 then return "got pasta'd!" end
+    return LOSS_PHRASES[math.random(#LOSS_PHRASES)]
+end
+
 local function ShowPastaOnPanel(key, entry)
     ns.panel.Display({
         image = entry.image or DEFAULT_PASTA_IMAGE,
-        text = "|cffFFD700" .. key .. "|r got pasta'd!",
+        text = "|cffFFD700" .. key .. "|r " .. LossPhrase(),
         duration = PASTA_PANEL_DURATION,
     })
 end
@@ -195,6 +235,7 @@ local function OnGambaChat(msg, sender)
     if msg:find(GAMBA_START_MSG, 1, true) then
         activeHost = sender
         wipe(gambaRolls)
+        ns.panel.SetHeader(nil) -- clear last game's owes echo
         ns.DebugPrint("cp", "gamba: new game started, host = " .. tostring(sender))
         UpdateRollPanel()
         return
@@ -213,6 +254,11 @@ local function OnGambaChat(msg, sender)
             " ignored (host is " .. activeHost .. ")")
         return
     end
+
+    -- Echo the host's owes line at the top of the panel for up to a minute,
+    -- regardless of whether the ower is a registered pasta target.
+    ns.panel.SetHeader(msg, 60)
+    ns.DebugPrint("cp", "gamba: header set to host owes line")
 
     -- Strip realm suffix if present (Name-Realm)
     name = name:match("^([^%-]+)") or name

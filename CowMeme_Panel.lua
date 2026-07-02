@@ -10,8 +10,10 @@ ns.defaults.panel = {
     point  = { "CENTER", 0, 200 }, -- anchor point, x, y on UIParent
 }
 
-local PANEL_WIDTH, PANEL_HEIGHT = 220, 140
+local PANEL_WIDTH, PANEL_HEIGHT = 220, 170
 local IMAGE_SIZE = 64
+local HEADER_Y = -26    -- reserved persistent line, below the title
+local CONTENT_TOP = -44 -- image/text start below the header line
 
 local frame = CreateFrame("Frame", "CowMemePanel", UIParent, "BackdropTemplate")
 frame:SetSize(PANEL_WIDTH, PANEL_HEIGHT)
@@ -32,9 +34,17 @@ local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 title:SetPoint("TOP", 0, -8)
 title:SetText("|cff00ff00CowMeme|r")
 
+-- Reserved persistent line at the top (below the title). Managed separately
+-- from Display content, so roll updates and pasta cards don't disturb it.
+local header = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+header:SetPoint("TOPLEFT", 8, HEADER_Y)
+header:SetPoint("TOPRIGHT", -8, HEADER_Y)
+header:SetJustifyH("CENTER")
+header:SetWordWrap(false)
+
 local image = frame:CreateTexture(nil, "ARTWORK")
 image:SetSize(IMAGE_SIZE, IMAGE_SIZE)
-image:SetPoint("TOP", 0, -24)
+image:SetPoint("TOP", 0, CONTENT_TOP)
 image:Hide()
 
 local text = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -47,11 +57,11 @@ footer:SetPoint("BOTTOMLEFT", 6, 6)
 footer:SetPoint("BOTTOMRIGHT", -6, 6)
 footer:SetJustifyH("CENTER")
 
--- Anchor the text region below the image when one is shown, otherwise
--- let it fill the panel; the bottom always leaves room for the footer.
+-- Anchor the content region below the header (and below the image when one is
+-- shown); the bottom always leaves room for the footer.
 local function LayoutText(hasImage)
     text:ClearAllPoints()
-    text:SetPoint("TOPLEFT", 10, hasImage and -(24 + IMAGE_SIZE + 4) or -24)
+    text:SetPoint("TOPLEFT", 10, hasImage and (CONTENT_TOP - IMAGE_SIZE - 4) or CONTENT_TOP)
     text:SetPoint("BOTTOMRIGHT", -10, 20)
 end
 LayoutText(false)
@@ -113,7 +123,7 @@ function panel.Display(opts)
     end
 end
 
--- Clear content, keeping the panel itself where it is
+-- Clear content, keeping the panel itself (and the header) where it is
 function panel.Clear()
     text:SetText("")
     footer:SetText("")
@@ -123,6 +133,27 @@ function panel.Clear()
     end
     image:Hide()
     LayoutText(false)
+end
+
+-- Set (or clear, with nil/"") the reserved top line. It persists independently
+-- of Display content; duration is seconds until it auto-clears (omit to keep).
+local headerTimer
+function panel.SetHeader(msg, duration)
+    if not ns.db.panel.shown then return end
+    header:SetText(msg or "")
+    if headerTimer then
+        headerTimer:Cancel()
+        headerTimer = nil
+    end
+    if msg and msg ~= "" then
+        frame:Show()
+        if duration then
+            headerTimer = C_Timer.NewTimer(duration, function()
+                headerTimer = nil
+                header:SetText("")
+            end)
+        end
+    end
 end
 
 function panel.SetShown(shown)

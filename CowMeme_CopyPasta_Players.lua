@@ -2,6 +2,7 @@ local ADDON_NAME, ns = ...
 
 ns.copypasta.Register("Moist", {
     chars = { "Moistorcs", },
+    image = "Interface\\AddOns\\CowMeme\\images\\Moist",
     lines = {
         "moist could walk into kara and somehow owe Prince Malchezaar gold by the end of the night",
         "@Moistiana is it true your PvP opener was evasion instead of sap after pressing Shadow Step? ... yes",
@@ -28,7 +29,8 @@ ns.copypasta.Register("Moistpvp", {
 })
 
 ns.copypasta.Register("Cowman", {
-    chars = { "Cowmahn", "Dowte", "Offalsniffer" },
+    chars = { "Cowmahn", "Dowte", "Offalfan" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Cowman",
     lines = {
         "why cowman's bags are ALWAYS OPEN? every boss pull. every trash pack. every screenshot. open bags. who is inventory managing during brutallus?",
         "if i ever saw a screenshot of cowman with his bags closed i'd assume he'd been hacked.",
@@ -59,6 +61,7 @@ ns.copypasta.Register("Large", {
 
 ns.copypasta.Register("Beaglz", {
     chars = { "Beaglz", },
+    image = "Interface\\AddOns\\CowMeme\\images\\Beaglz",
     lines = {
         "one day beaglz's going to die so fast that spirit of redemption is going to proc during the ready check.",
         "at this point that angel is beaglz actual character model and the priest is just a temporary buff.",
