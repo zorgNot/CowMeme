@@ -77,7 +77,8 @@ end
 
 local function OnTick()
     SendHeartbeat()
-    if ns.DebugOn("sync") then
+    -- Leader announce is per-heartbeat spam, so it's verbose-gated
+    if ns.DebugVerbose("sync") then
         local leader = sync.GetLeader()
         if leader == playerName then
             print("|cff00ff00[CowMeme sync] *** I am the leader ***|r")

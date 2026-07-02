@@ -251,12 +251,14 @@ commands["status"] = function()
     ns.Print("Status:")
     local line = "  |cffFFD700CowMeme|r: enabled " .. OnOff(ns.db.enabled) .. ", debug " .. OnOff(ns.db.debug)
     if ns.db.debug then
-        line = line .. ", sandbox " .. OnOff(ns.db.debugSandbox)
+        line = line .. ", sandbox " .. OnOff(ns.db.debugSandbox) .. ", verbose " .. OnOff(ns.db.debugVerbose)
     end
     print(line)
     ns.fnc.PrintStatus()
     ns.copypasta.PrintStatus()
-    ns.sync.PrintStatus()
+    if ns.db.debug then
+        ns.sync.PrintStatus()
+    end
     ns.panel.PrintStatus()
 end
 
