@@ -263,8 +263,9 @@ local function GetCause(destGUID)
     return nil
 end
 
--- Batch mode: collect entries per milestone for 1s, then announce together.
--- Explicit setting, or forced on in raid.
+-- Batch mode: collect entries per milestone for BATCH_WINDOW, then announce
+-- together. Explicit setting, or forced on in raid.
+local BATCH_WINDOW = 1.5 -- seconds
 local pendingMilestones = {} -- { [count] = { {name=,cause=}, ... } }
 
 local function IsBatching()
@@ -274,8 +275,8 @@ end
 local function QueueMilestone(entry, count)
     if not pendingMilestones[count] then
         pendingMilestones[count] = {}
-        ns.DebugPrint("fnc", "batch: opened 1s window for milestone " .. count)
-        C_Timer.After(1, function()
+        ns.DebugPrint("fnc", "batch: opened " .. BATCH_WINDOW .. "s window for milestone " .. count)
+        C_Timer.After(BATCH_WINDOW, function()
             local entries = pendingMilestones[count]
             pendingMilestones[count] = nil
             if entries and #entries > 0 then
