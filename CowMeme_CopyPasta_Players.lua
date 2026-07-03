@@ -91,7 +91,7 @@ ns.copypasta.Register("bob", {
         "Bagelbob looked at crowd control, kill orders, and patience and decided those were other people's responsibilities.",
         "Bagelbob got that spreadsheet gamer aura. Logs open on monitor one, raid assignments on monitor two, twelve tabs of calculations running... then immediately charges into a pull he wasn't supposed to start. Peak warrior intellectualism.",
         "Warrior brain so advanced it loops back around. Will spend 45 minutes optimizing a 0.3% DPS increase in spreadsheets, then lose all of it instantly by ripping threat and getting folded like a lawn chair.",
-        "\"PUMP THE BRAKES???? never!!!!! warriors dont brake we ZUG ZUG!!!!! ohhhh nohh phallussy is pulling threat so why cant I?????? tank cant even t0nt Kel'Thas trash im goin bio n unsubbing. 2026 n ppl still ask for threat caps lul u r bad\" -bob",
+        "\"PUMP THE BRAKES???? never!!!!! war dont brake we ZUG ZUG!!!!! ohhhh nohh phallussy is pull threat so why cant I?????? tank cant even t0nt Kel'Thas trash im goin bio n unsubbing. 2026 n ppl still ask for threat caps lul u r bad\" -bob",
     },
 })
 
@@ -110,7 +110,7 @@ ns.copypasta.Register("sam", {
     chars = { "Imretired", "Sandwichsam" },
     lines = {
         "SANDWICHSAM AKA TACOLAD AKA IMRETIRED AKA whatever name he's using this reset. Bro got more aliases than Bagelbob has spreadsheets. Every raid roster looks like we're investigating fantasy identity fraud.",
-        "Dude is younger than TBC but somehow plays like he was there when the Dark Portal opened. PvP demon, top DPS, absolute raid weapon... then his pet takes a scenic tour through Black Temple and suddenly we're in combat with half the zip code.",
+        "Dude is younger than TBC but somehow plays like he was there when the Dark Portal opened. PvP demon, top DPS, absolute raid weapon... then his pet takes a tour through Black Temple and suddenly we're in combat with half the zip code.",
         "SAM is the living embodiment of \"he got that dog in him\" except unfortunately the dog is 80 yards away chain-pulling trash. Pet AI enters its villain arc while Sam is still pumping the boss like nothing happened.",
         "TOP PARSE. GLADIATOR HANDS. ELITE GAMER. Then raid warning appears: \"WHO PULLED THAT PACK?\" Camera slowly pans to Sam's pet returning from a side quest it invented for itself 3 minutes ago.",
         "Every hunter mistake from 2007 somehow survives exclusively through Sam. Pet on aggressive? Check. Random extra mobs? Check. Somehow still top DPS afterward? Also check. Blizzard's strongest soldier.",
@@ -134,7 +134,7 @@ ns.copypasta.Register("anna", {
     lines = {
         "The guild spent six months convinced Anna was running an industrial-scale farming operation. Every time someone needed consumes she'd appear out of the void with 800 stacks and no explanation. Actual NPC behavior.",
         "SERPENT MEAT. MORE SERPENT MEAT. EVEN MORE SERPENT MEAT!!!!!! Nobody knows what she's cooking. Nobody knows where it all goes. The only certainty is that another thousand snakes have vanished from the ecosystem.",
-        "XxANNA_RESOURCEQUEENxX enters zone. local wildlife leaves zone. economy leaves zone. reality leaves zone. One minute you're doing dailies, next minute she's explaining a serpent meat arbitrage opportunity in guild chat and nobody knows what happened.",
+        "XxANNA_RESOURCEQUEENxX enters zone. local wildlife leaves zone. economy leaves zone. reality leaves zone. One minute you're doing dailies, next she's explaining a serpent meat arbitrage opportunity in guild chat and nobody knows what happened.",
         "OLD SCHOOL FORUM POST ENERGY: \"LF ANNA\" Last seen somewhere in Outland skinning an entire biome into extinction. If found, please return to raid before she accidentally corners the global serpent meat market again. kthxbye.",
     },
 })
