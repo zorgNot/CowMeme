@@ -30,17 +30,10 @@ local function Me()
     return playerName
 end
 
--- Must mirror the canonical channel in CowMeme.lua: the election audience
--- has to match the channel the announcements go to.
+-- The election audience must match the channel announcements go to, so this
+-- shares core's canonical-channel logic (instance-aware for battlegrounds).
 local function CurrentScope()
-    if IsInRaid() then
-        return "RAID"
-    elseif IsInGroup() then
-        return "PARTY"
-    elseif IsInGuild() then
-        return "GUILD"
-    end
-    return nil
+    return ns.CanonicalChannel()
 end
 
 -- Capability flags this client advertises in its heartbeat:

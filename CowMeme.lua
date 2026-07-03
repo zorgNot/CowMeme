@@ -89,9 +89,14 @@ end
 
 -- The canonical channel: the best non-protected channel available.
 -- SAY/YELL are protected outside hardware events, so the order is
--- group > guild > nil (nil = print locally instead).
-local function GetCanonicalChannel()
-    if IsInRaid() then
+-- instance > group > guild > nil (nil = print locally instead).
+-- Battlegrounds/arenas are instanced groups where IsInRaid()/IsInGroup()
+-- report true but only "INSTANCE_CHAT" is a valid target, so it comes first.
+-- Shared by ns.Announce and the sync heartbeat, so the two never diverge.
+function ns.CanonicalChannel()
+    if LE_PARTY_CATEGORY_INSTANCE and IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+        return "INSTANCE_CHAT"
+    elseif IsInRaid() then
         return "RAID"
     elseif IsInGroup() then
         return "PARTY"
@@ -107,7 +112,7 @@ end
 -- "F" = FnC), so the election only considers peers willing to announce it.
 -- Local display (panel) must never route through here.
 function ns.Announce(line, cap)
-    local channel = GetCanonicalChannel()
+    local channel = ns.CanonicalChannel()
     if ns.SandboxActive() then
         local note = ""
         if not ns.sync.IsAnnouncer(cap) then
