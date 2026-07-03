@@ -49,7 +49,7 @@ end
 -- Panel display when a pasta fires. Registry entries may carry an optional
 -- per-player image field; the addon icon is the fallback.
 local DEFAULT_PASTA_IMAGE = "Interface\\AddOns\\CowMeme\\images\\image"
-local PASTA_PANEL_DURATION = 8
+local PASTA_PANEL_DURATION = 15
 
 -- Loss phrases shown after the player's name on the panel; one picked at
 -- random per pasta. Add more entries here.
