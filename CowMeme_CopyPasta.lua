@@ -4,8 +4,11 @@ ns.copypasta = {}
 local cp = ns.copypasta
 
 -- Default CopyPasta settings — merged into CowMemeDB on load
+-- gambaMonitor = willing to announce gamba pastas to chat. Detection and
+-- panel display are always on; this only gates speech, and the elected
+-- announcer among willing peers prevents multi-client spam.
 ns.defaults.copypasta = {
-    gambaMonitor = false,
+    gambaMonitor = true,
 }
 
 -- Registry: populated by individual content files
@@ -34,41 +37,8 @@ local function BuildMessage(line)
     return "pastaThat " .. line .. " {rt7}"
 end
 
--- The canonical channel: the best non-protected channel available.
--- SAY/YELL are protected outside hardware events, so the order is
--- group > guild > nil (nil = print locally instead).
-local function GetCanonicalChannel()
-    if IsInRaid() then
-        return "RAID"
-    elseif IsInGroup() then
-        return "PARTY"
-    elseif IsInGuild() then
-        return "GUILD"
-    end
-    return nil
-end
-
--- Send a finished message to the canonical channel, or print it
--- locally if none is available. Sandbox mode prints locally instead.
--- Only the elected sync leader speaks, so guildies running the addon
--- don't all announce the same event.
-function cp.SendToCanonicalChannel(line)
-    local channel = GetCanonicalChannel()
-    if ns.SandboxActive() then
-        ns.Print("|cff00ccff[SANDBOX -> " .. (channel or "no channel") .. "]|r " .. line)
-        return
-    end
-    if not ns.sync.IsLeader() then
-        ns.DebugPrint("cp", "suppressed (leader is " .. ns.sync.GetLeader() .. "): " .. line)
-        return
-    end
-    if channel then
-        ns.DebugPrint("cp", "canonical channel " .. channel .. ": " .. line)
-        SendChatMessage(line, channel)
-    else
-        ns.Print("|cffFFD700[CopyPasta]|r (no valid channel) " .. line)
-    end
-end
+-- Chat announcing lives in core: ns.Announce(line, "G") — leader-gated
+-- among willing announcers. Panel display never routes through it.
 
 -- Resolve an input name (any char) to a registry entry
 local function Resolve(input)
@@ -116,22 +86,35 @@ local LOSS_PHRASES = {
     "wealth transferred to stronger hands",
 }
 
-local function LossPhrase()
+-- Pick a loss phrase. Seeded with the host's owes line + server date so
+-- every client computes the same phrase for the same loss, but the pick
+-- still varies day to day and loss to loss.
+local function LossPhrase(seed)
     if #LOSS_PHRASES == 0 then return "got pasta'd!" end
-    return LOSS_PHRASES[math.random(#LOSS_PHRASES)]
+    if not seed then
+        return LOSS_PHRASES[math.random(#LOSS_PHRASES)]
+    end
+    local s = seed .. date("!%Y-%m-%d", GetServerTime())
+    local h = 5381
+    for i = 1, #s do
+        h = (h * 33 + s:byte(i)) % 2147483647
+    end
+    return LOSS_PHRASES[(h % #LOSS_PHRASES) + 1]
 end
 
-local function ShowPastaOnPanel(key, entry)
+-- Local-only display: every client renders this itself; never leader-gated
+local function ShowPastaOnPanel(key, entry, seed)
     ns.panel.Display({
         image = entry.image or DEFAULT_PASTA_IMAGE,
-        text = "|cffFFD700" .. key .. "|r " .. LossPhrase(),
+        text = "|cffFFD700" .. key .. "|r " .. LossPhrase(seed),
         duration = PASTA_PANEL_DURATION,
     })
 end
 
--- Pick a random line and send to chat
+-- Pick a random line and send to chat. Manual sends are a personal act:
+-- they go to the requested destination only, with no panel display.
 function cp.Send(input, channel)
-    local entry, key = Resolve(input)
+    local entry = Resolve(input)
 
     if not entry or #entry.lines == 0 then
         ns.Print("|cffFFD700[CopyPasta]|r Unknown character \"" .. input .. "\".")
@@ -154,7 +137,6 @@ function cp.Send(input, channel)
     end
 
     SendChatMessage(line, channel)
-    ShowPastaOnPanel(key, entry)
 end
 
 -- Gamba monitor: watch chat for "<character> owes ..." and fire a
@@ -284,9 +266,15 @@ local function OnGambaChat(msg, sender)
 
     ns.DebugPrint("cp", "gamba: \"" .. name .. "\" resolved to " .. key ..
         ", firing pasta; game ends")
-    local line = BuildMessage(entry.lines[math.random(1, #entry.lines)])
-    cp.SendToCanonicalChannel(line)
-    ShowPastaOnPanel(key, entry)
+    -- Local display first, on every client, independent of announcing
+    ShowPastaOnPanel(key, entry, msg)
+    -- Chat only if this client is willing; the election among willing
+    -- announcers ensures exactly one speaks
+    if ns.db.copypasta.gambaMonitor then
+        ns.Announce(BuildMessage(entry.lines[math.random(1, #entry.lines)]), "G")
+    else
+        ns.DebugPrint("cp", "gamba: announcing off locally; pasta not sent")
+    end
 
     -- Game over: forget the host until the next game starts
     activeHost = nil
@@ -313,10 +301,11 @@ local function UnregisterGambaEvents()
     end
 end
 
--- Register/unregister the gamba monitor based on the global addon enable flag
--- and the gambaMonitor setting. Does not change ns.db.copypasta.gambaMonitor.
+-- Gamba detection is always on while the addon is enabled: every client
+-- tracks games and renders the panel locally by default. The gambaMonitor
+-- setting only gates announcing to chat, checked at the Announce call site.
 function cp.ApplyState()
-    if ns.db.enabled and ns.db.copypasta.gambaMonitor then
+    if ns.db.enabled then
         RegisterGambaEvents()
     else
         UnregisterGambaEvents()
@@ -325,14 +314,14 @@ end
 
 function cp.EnableGamba()
     ns.db.copypasta.gambaMonitor = true
-    cp.ApplyState()
-    ns.Print("|cffFFD700[CopyPasta]|r Gamba monitor |cff00ff00ON|r.")
+    ns.sync.Ping() -- advertise the G flag promptly
+    ns.Print("|cffFFD700[CopyPasta]|r Gamba announcing |cff00ff00ON|r.")
 end
 
 function cp.DisableGamba()
     ns.db.copypasta.gambaMonitor = false
-    cp.ApplyState()
-    ns.Print("|cffFFD700[CopyPasta]|r Gamba monitor |cffff0000OFF|r.")
+    ns.sync.Ping()
+    ns.Print("|cffFFD700[CopyPasta]|r Gamba announcing |cffff0000OFF|r (panel display stays on).")
 end
 
 -- Called from OnLoad after db is ready
@@ -360,7 +349,7 @@ function cp.PrintCommands()
     print("  |cffffff00/cp <name> g|r       - send to guild chat")
     print("  |cffffff00/cp <name> <1-9>|r   - send to a numbered channel")
     print("  |cffffff00/cp list|r            - list registered players and chars")
-    print("  |cffffff00/cp gamba [on|off]|r  - toggle the 'owes' chat monitor")
+    print("  |cffffff00/cp gamba [on|off]|r  - toggle announcing gamba pastas to chat (panel display is always on)")
     if ns.db.debug then
         print("  |cffffff00/cp simgamba <chat line>|r - (debug) feed a fake line to the gamba monitor")
         print("  |cffffff00/cp simroll <name> <n>|r   - (debug) feed a fake /roll to the top-roll tracker")
@@ -373,7 +362,7 @@ function cp.PrintStatus()
     local gamba = ns.db.copypasta.gambaMonitor and "|cff00ff00ON|r" or "|cffff0000OFF|r"
     local n = 0
     for _ in pairs(cp.registry) do n = n + 1 end
-    print("  |cffFFD700CopyPasta|r: gamba monitor " .. gamba .. ", " .. n .. " players")
+    print("  |cffFFD700CopyPasta|r: gamba announcing " .. gamba .. ", " .. n .. " players")
 end
 
 -- Slash command: /copypasta <charname> [channel]
@@ -495,14 +484,13 @@ local function HandleSlash(input)
 
     if channel ~= "" and tonumber(channel) then
         local num = tonumber(channel)
-        local entry, key = Resolve(name)
+        local entry = Resolve(name)
         if not entry then
             ns.Print("|cffFFD700[CopyPasta]|r Unknown character \"" .. name .. "\".")
             return
         end
         local msg = BuildMessage(entry.lines[math.random(1, #entry.lines)])
         SendChatMessage(msg, "CHANNEL", nil, num)
-        ShowPastaOnPanel(key, entry)
         return
     end
 

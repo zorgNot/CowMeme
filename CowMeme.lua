@@ -87,6 +87,47 @@ function ns.SandboxActive()
     return (ns.db and ns.db.debug and ns.db.debugSandbox) or GetTime() < simSandboxUntil
 end
 
+-- The canonical channel: the best non-protected channel available.
+-- SAY/YELL are protected outside hardware events, so the order is
+-- group > guild > nil (nil = print locally instead).
+local function GetCanonicalChannel()
+    if IsInRaid() then
+        return "RAID"
+    elseif IsInGroup() then
+        return "PARTY"
+    elseif IsInGuild() then
+        return "GUILD"
+    end
+    return nil
+end
+
+-- Announce a line to the canonical channel. This is the only leader-gated
+-- path in the addon: one elected announcer speaks for everyone running it.
+-- cap is the capability the content belongs to ("G" = gamba pasta,
+-- "F" = FnC), so the election only considers peers willing to announce it.
+-- Local display (panel) must never route through here.
+function ns.Announce(line, cap)
+    local channel = GetCanonicalChannel()
+    if ns.SandboxActive() then
+        local note = ""
+        if not ns.sync.IsAnnouncer(cap) then
+            note = " |cff00ccff(live: suppressed, announcer = " .. tostring(ns.sync.GetAnnouncer(cap)) .. ")|r"
+        end
+        ns.Print("|cff00ccff[SANDBOX -> " .. (channel or "no channel") .. "]|r " .. line .. note)
+        return
+    end
+    if not ns.sync.IsAnnouncer(cap) then
+        ns.DebugPrint("announce", "suppressed (announcer: " .. tostring(ns.sync.GetAnnouncer(cap)) .. "): " .. line)
+        return
+    end
+    if channel then
+        ns.DebugPrint("announce", "-> " .. channel .. ": " .. line)
+        SendChatMessage(line, channel)
+    else
+        ns.Print("(no valid channel) " .. line)
+    end
+end
+
 -- Colored ON/OFF label
 local function OnOff(v)
     return v and "|cff00ff00ON|r" or "|cffff0000OFF|r"
@@ -123,7 +164,7 @@ local helpDetails = {
     status = {
         "|cffffff00/cm status|r",
         "Show current settings: addon enabled/debug, FnC tracking and batch mode,",
-        "the CopyPasta gamba monitor, sync leader, and panel state.",
+        "CopyPasta gamba announcing, sync leader, and panel state.",
     },
     panel = {
         "|cffffff00/cm panel [show|hide|lock|unlock|reset|clear|test]|r",

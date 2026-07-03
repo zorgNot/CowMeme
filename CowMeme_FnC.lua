@@ -28,12 +28,14 @@ function fnc.New()
     ns.db.fnc.deaths = {}
     ns.Print("|cffFFD700[Fast and Clean]|r Run started. Good luck!")
     fnc.ApplyState()
+    ns.sync.Ping() -- advertise the F flag promptly
 end
 
 -- Resume tracking without clearing deaths
 function fnc.Start()
     ns.db.fnc.active = true
     fnc.ApplyState()
+    ns.sync.Ping()
     ns.Print("|cffFFD700[Fast and Clean]|r Tracking resumed.")
 end
 
@@ -47,6 +49,7 @@ end
 function fnc.Stop()
     ns.db.fnc.active = false
     fnc.ApplyState()
+    ns.sync.Ping()
     ns.Print("|cffFFD700[Fast and Clean]|r Run stopped.")
 end
 
@@ -155,7 +158,7 @@ end
 
 local function AnnounceMilestone(entries, count)
     local msg = string.format(MILESTONES[count], FormatSubject(entries))
-    ns.copypasta.SendToCanonicalChannel(msg .. " " .. count .. " {rt8}")
+    ns.Announce(msg .. " " .. count .. " {rt8}", "F")
 end
 
 -- Cause-of-death tracking: UNIT_DIED carries no killing blow, so remember
@@ -298,8 +301,7 @@ local function AnnounceDeath(name, count, cause)
         total = total + c
     end
     if total == 1 then
-        ns.copypasta.SendToCanonicalChannel(
-            "First blood! " .. name .. ", " .. cause .. " BloodTrail  " .. count .. " {rt8}")
+        ns.Announce("First blood! " .. name .. ", " .. cause .. " BloodTrail  " .. count .. " {rt8}", "F")
         return
     end
 
