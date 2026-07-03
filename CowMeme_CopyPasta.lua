@@ -162,6 +162,7 @@ local GAMBA_ROLL_MSG = "Entries have closed. Roll now!"
 local gambaFrame = CreateFrame("Frame", "CowMemeGambaFrame", UIParent)
 local activeHost = nil -- sender of the current game's start message, or nil
 local rollsOpen = false -- true once the host closes entries and calls to roll
+local gambaStake = nil -- max roll of the current game, parsed from the start line
 
 -- Roll tracking for the active gamba game: first /roll per player counts
 local gambaRolls = {} -- { [playerName] = roll }
@@ -174,7 +175,7 @@ local function UpdateRollPanel(footer)
         if not topRoll or roll > topRoll then topName, topRoll = name, roll end
         if not botRoll or roll < botRoll then botName, botRoll = name, roll end
     end
-    local lines = { "|cffFFD700Gamba|r" }
+    local lines = { "|cffFFD700Gamba|r" .. (gambaStake and (" (1-" .. gambaStake .. ")") or "") }
     if not topRoll then
         table.insert(lines, "waiting for rolls...")
     else
@@ -190,11 +191,16 @@ local function UpdateRollPanel(footer)
 end
 
 -- System messages: track "/roll" results, but only after entries have closed
+-- and only rolls made for the game's stake
 local function OnSystemMsg(msg)
     if not activeHost then return end
     if not rollsOpen then return end
-    local name, roll, low = msg:match("^(%S+) rolls (%d+) %((%d+)%-%d+%)$")
+    local name, roll, low, high = msg:match("^(%S+) rolls (%d+) %((%d+)%-(%d+)%)$")
     if not name or low ~= "1" then return end
+    if gambaStake and tonumber(high) ~= gambaStake then
+        ns.DebugPrint("cp", "gamba: roll ignored (1-" .. high .. ", game is 1-" .. gambaStake .. "): " .. name)
+        return
+    end
     if gambaRolls[name] ~= nil then -- first roll counts; rerolls ignored
         ns.DebugPrint("cp", "gamba: reroll ignored: " .. name)
         return
@@ -221,9 +227,12 @@ local function OnGambaChat(msg, sender)
     if msg:find(GAMBA_START_MSG, 1, true) then
         activeHost = sender
         rollsOpen = false
+        -- Capture the stake, e.g. "(1-100)"; nil (unparsed) accepts any 1-N roll
+        gambaStake = tonumber(msg:match("%(1%-(%d+)%)"))
         wipe(gambaRolls)
         ns.panel.SetHeader(nil) -- clear last game's owes echo
-        ns.DebugPrint("cp", "gamba: new game started, host = " .. tostring(sender))
+        ns.DebugPrint("cp", "gamba: new game started, host = " .. tostring(sender) ..
+            ", stake = " .. (gambaStake and ("1-" .. gambaStake) or "unknown"))
         UpdateRollPanel()
         return
     end
@@ -279,6 +288,7 @@ local function OnGambaChat(msg, sender)
     -- Game over: forget the host until the next game starts
     activeHost = nil
     rollsOpen = false
+    gambaStake = nil
 end
 
 gambaFrame:SetScript("OnEvent", function(self, event, msg, sender)
@@ -407,7 +417,7 @@ local function HandleSlash(input)
         end
         ns.Print("|cffFFD700[CopyPasta]|r sim: running gamba demo targeting " .. key .. " (sandboxed, ~6s)...")
         ns.ForceSandbox(9)
-        OnGambaChat(GAMBA_START_MSG, "SimHost")
+        OnGambaChat(GAMBA_START_MSG .. " (1-100)", "SimHost")
         OnGambaChat(GAMBA_ROLL_MSG, "SimHost") -- close entries so rolls count
         -- Fixed high rollers, skipping any that collide with the target so the
         -- target's low roll below isn't dropped as a reroll.
