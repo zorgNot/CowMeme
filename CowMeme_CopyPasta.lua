@@ -174,9 +174,12 @@ local GAMBA_CHAT_EVENTS = {
 -- The CrossGambling addon announces this when a game opens; its sender is
 -- the game host, the only player whose "owes" lines we trust.
 local GAMBA_START_MSG = "CrossGambling: A new game has been started!"
+-- The host announces this when entries close; only then do rolls count.
+local GAMBA_ROLL_MSG = "Entries have closed. Roll now!"
 
 local gambaFrame = CreateFrame("Frame", "CowMemeGambaFrame", UIParent)
 local activeHost = nil -- sender of the current game's start message, or nil
+local rollsOpen = false -- true once the host closes entries and calls to roll
 
 -- Roll tracking for the active gamba game: first /roll per player counts
 local gambaRolls = {} -- { [playerName] = roll }
@@ -204,9 +207,10 @@ local function UpdateRollPanel(footer)
     })
 end
 
--- System messages: track "/roll" results while a game is active
+-- System messages: track "/roll" results, but only after entries have closed
 local function OnSystemMsg(msg)
     if not activeHost then return end
+    if not rollsOpen then return end
     local name, roll, low = msg:match("^(%S+) rolls (%d+) %((%d+)%-%d+%)$")
     if not name or low ~= "1" then return end
     if gambaRolls[name] ~= nil then -- first roll counts; rerolls ignored
@@ -234,10 +238,20 @@ local function OnGambaChat(msg, sender)
     -- A new game announces itself; remember its host
     if msg:find(GAMBA_START_MSG, 1, true) then
         activeHost = sender
+        rollsOpen = false
         wipe(gambaRolls)
         ns.panel.SetHeader(nil) -- clear last game's owes echo
         ns.DebugPrint("cp", "gamba: new game started, host = " .. tostring(sender))
         UpdateRollPanel()
+        return
+    end
+
+    -- Entries close: from here on, rolls count
+    if msg:find(GAMBA_ROLL_MSG, 1, true) then
+        if sender == activeHost then
+            rollsOpen = true
+            ns.DebugPrint("cp", "gamba: entries closed, rolls now counting")
+        end
         return
     end
 
@@ -276,6 +290,7 @@ local function OnGambaChat(msg, sender)
 
     -- Game over: forget the host until the next game starts
     activeHost = nil
+    rollsOpen = false
 end
 
 gambaFrame:SetScript("OnEvent", function(self, event, msg, sender)
@@ -373,8 +388,9 @@ local function HandleSlash(input)
         local line = strtrim(input:sub(#"simgamba" + 1))
         if line == "" then
             ns.Print("|cffFFD700[CopyPasta]|r Usage: /cp simgamba <chat line>  (fed as sender 'SimHost')")
-            print("  Start a game first, then an owes line from the same sender, e.g.:")
+            print("  Start a game, close entries, then rolls/owes -- all same sender, e.g.:")
             print("    |cffffff00/cp simgamba CrossGambling: A new game has been started!|r")
+            print("    |cffffff00/cp simgamba Entries have closed. Roll now!|r")
             print("    |cffffff00/cp simgamba Moistorcs owes 50g|r")
             return
         end
@@ -403,6 +419,7 @@ local function HandleSlash(input)
         ns.Print("|cffFFD700[CopyPasta]|r sim: running gamba demo targeting " .. key .. " (sandboxed, ~6s)...")
         ns.ForceSandbox(9)
         OnGambaChat(GAMBA_START_MSG, "SimHost")
+        OnGambaChat(GAMBA_ROLL_MSG, "SimHost") -- close entries so rolls count
         -- Fixed high rollers, skipping any that collide with the target so the
         -- target's low roll below isn't dropped as a reroll.
         local t = 1
