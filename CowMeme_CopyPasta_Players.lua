@@ -73,6 +73,7 @@ ns.copypasta.Register("Beaglz", {
 
 ns.copypasta.Register("Shaeza", {
     chars = { "Shaeza", "Torrin", "Rhemmi" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Shaeza",
     lines = {
         "FLOORZA spotted in Karazhan again!!!!!! pulls aggro before tanks even tab target, eats floor instantly, then spends 20 mins explaining why rogue loot is actually HER loot lul.",
         "Shaeza sees a rogue equip upgrade and enters ENHANCE EMERGENCY MODE!!!!!! DKP conspiracy, ninja looters everywhere, RNGesus personally targeting her since TBC launch.",
@@ -82,8 +83,9 @@ ns.copypasta.Register("Shaeza", {
     },
 })
 
-ns.copypasta.Register("bob", {
+ns.copypasta.Register("Bob", {
     chars = { "Bagelbob", "Bagelbobert", "Bagelbobity", "Bagelbuddy", "Bagelbobby", "Bagelshopbob", "Bagelshopbob", "Bagelbobbert" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Bob",
     lines = {
         "Bagelbob sees threat as a suggested mechanic. Tank got a 10 second lead, sunders up, perfect pull... doesn't matter. Bro is already halfway to Valhalla because stopping DPS is apparently against his religion.",
         "BAGELBOB: Creator of the legendary \"fast n clean\" run strategy. Somehow every run is 40% slower and 300% more traumatic. Three accidental pulls, two wipes, one raid warning essay. Fast? Nope. Clean? Absolutely not.",
@@ -95,8 +97,9 @@ ns.copypasta.Register("bob", {
     },
 })
 
-ns.copypasta.Register("doug", {
+ns.copypasta.Register("Doug", {
     chars = { "Donutdoug" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Doug",
     lines = {
         "DONUTDOUG got that esports aim and NPC pathfinding!!!!!! brother can execute a 37-button rotation with frame-perfect precision but gets asked where the TK attunement NPC is and suddenly we're observing a wildlife documentary.",
         "DONUTDOUG signs up for EVERY gamba!!!!!! every single one. Then raid night arrives and bro forgets to roll. Loot expires, raid moves on, twenty minutes later: \"wait did the gamba happen?\" ACTUAL goldfish debuff.",
@@ -106,8 +109,9 @@ ns.copypasta.Register("doug", {
     },
 })
 
-ns.copypasta.Register("sam", {
+ns.copypasta.Register("Sam", {
     chars = { "Imretired", "Sandwichsam" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Sam",
     lines = {
         "SANDWICHSAM AKA TACOLAD AKA IMRETIRED AKA whatever name he's using this reset. Bro got more aliases than Bagelbob has spreadsheets. Every raid roster looks like we're investigating fantasy identity fraud.",
         "Dude is younger than TBC but somehow plays like he was there when the Dark Portal opened. PvP demon, top DPS, absolute raid weapon... then his pet takes a tour through Black Temple and suddenly we're in combat with half the zip code.",
@@ -118,8 +122,9 @@ ns.copypasta.Register("sam", {
     },
 })
 
-ns.copypasta.Register("stink", {
+ns.copypasta.Register("Stink", {
     chars = { "Deepstink", "Stinkkink" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Stink",
     lines = {
         "SMELL POSTING IS BACK!!!!!! Deepstink rolls up and the air hits like onions, garlic, fermented cabbage, and a critically timed self-buff. Entire raid acting like it's disgusting while standing suspiciously close to him all night. Curious.",
         "DEEPSTINK enters the raid and suddenly everyone's FPS goes up. 99 parse healer, 99 parse human being. Bro healing through mechanics that haven't even happened yet.",
@@ -129,7 +134,7 @@ ns.copypasta.Register("stink", {
     },
 })
 
-ns.copypasta.Register("anna", {
+ns.copypasta.Register("Anna", {
     chars = { "Annuh", "Annuhz" },
     lines = {
         "The guild spent six months convinced Anna was running an industrial-scale farming operation. Every time someone needed consumes she'd appear out of the void with 800 stacks and no explanation. Actual NPC behavior.",
@@ -139,7 +144,7 @@ ns.copypasta.Register("anna", {
     },
 })
 
-ns.copypasta.Register("ben", {
+ns.copypasta.Register("Ben", {
     chars = { "Marksben", "Benedickton" },
     lines = {
         "ben could have rolled shaman. BLOODLUST. CHAIN HEAL. guild hero arc. instead willingly entered the hunter containment zone with 9000 identical dudes named Legolass and Huntèr. genuinely fascinating self-destructive behavior.",
@@ -149,7 +154,7 @@ ns.copypasta.Register("ben", {
     },
 })
 
-ns.copypasta.Register("mcian", {
+ns.copypasta.Register("Mcian", {
     chars = { "Javstar", "Chucksneed", "Mcian" },
     lines = {
        "beans on a paper plate. tuna straight from the can. vape cloud visible from Netherstorm. absolutely locked in. mcian operating at a gamer frequency normally only detected by military satellites.",
@@ -160,7 +165,7 @@ ns.copypasta.Register("mcian", {
    },
 })
 
-ns.copypasta.Register("tom", {
+ns.copypasta.Register("Tom", {
     chars = { "Bageltom", "Bagelbuddy", },
     lines = {
        "BAGELTOM allegedly named Tom but evidence remains inconclusive. could be Greg. could be Steve. could be Forklift. Discord says Dochunidiot which sounds less like a username and more like a modem dying in 2007. corrupted save file aura.",
@@ -180,7 +185,7 @@ ns.copypasta.Register("Pink", {
    },
 })
 
-ns.copypasta.Register("zaby", {
+ns.copypasta.Register("Zaby", {
     chars = { "Zabyhunter", "Zabydruid","Zabypriest" },
     lines = {
        "ZABYDISPEL INCIDENT still classified. Krosh shield removed with frame perfect precision. Mikeymage instantly experiencing new and exciting forms of fire damage. chat moving too fast for investigators to intervene.",
