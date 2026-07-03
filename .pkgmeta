@@ -1,0 +1,9 @@
+package-as: CowMeme
+
+# CowMeme bundles no external libraries
+enable-nolib-creation: no
+
+# Dev-only and repo files that shouldn't ship inside the addon
+ignore:
+    - watch.ps1
+    - README.md
