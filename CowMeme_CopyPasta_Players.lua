@@ -136,6 +136,7 @@ ns.copypasta.Register("Stink", {
 
 ns.copypasta.Register("Anna", {
     chars = { "Annuh", "Annuhz" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Anna",
     lines = {
         "The guild spent six months convinced Anna was running an industrial-scale farming operation. Every time someone needed consumes she'd appear out of the void with 800 stacks and no explanation. Actual NPC behavior.",
         "SERPENT MEAT. MORE SERPENT MEAT. EVEN MORE SERPENT MEAT!!!!!! Nobody knows what she's cooking. Nobody knows where it all goes. The only certainty is that another thousand snakes have vanished from the ecosystem.",
@@ -146,6 +147,7 @@ ns.copypasta.Register("Anna", {
 
 ns.copypasta.Register("Ben", {
     chars = { "Marksben", "Benedickton" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Ben",
     lines = {
         "ben could have rolled shaman. BLOODLUST. CHAIN HEAL. guild hero arc. instead willingly entered the hunter containment zone with 9000 identical dudes named Legolass and Huntèr. genuinely fascinating self-destructive behavior.",
         "MARKSBEN aura is saying \"great idea guys\" and causing a wipe 5 minutes later through sarcasm so concentrated it bends raid mechanics around itself.",
@@ -167,6 +169,7 @@ ns.copypasta.Register("Mcian", {
 
 ns.copypasta.Register("Tom", {
     chars = { "Bageltom", "Bagelbuddy", },
+    image = "Interface\\AddOns\\CowMeme\\images\\Tom",
     lines = {
        "BAGELTOM allegedly named Tom but evidence remains inconclusive. could be Greg. could be Steve. could be Forklift. Discord says Dochunidiot which sounds less like a username and more like a modem dying in 2007. corrupted save file aura.",
        "Bageltom and Moistorcs in the same voice channel got FEMA issuing warnings. one can't hold threat, one can't hold gold. together they're building an economic and mechanical disaster unseen since original TBC.",
@@ -199,6 +202,7 @@ ns.copypasta.Register("Zaby", {
 
 ns.copypasta.Register("Dinadin", {
     chars = { "Dinadin", "Dinadina","Repurge" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Dinadin",
     lines = {
        "DINADIN naming philosophy: paladin? PALADIN in the name. shaman? PURGE in the name. next character gonna be Warriorwarrior. brother looked at creativity and pressed SKIP INTRO.",
        "DINADIN spent 400 hours simming seal twists and exactly 4 seconds naming characters. PALADIN -> DINADIN. SHAMAN -> REPURGE. next expansion introducing HUNTERSHOT and MAGECAST. revolutionary creativity.",
@@ -221,6 +225,7 @@ ns.copypasta.Register("Mayo", {
 
 ns.copypasta.Register("Scubastevo", {
     chars = { "Scubastevo" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Scubastevo",
     lines = {
        "SCUBASTEVO casting Lightning Bolt with one hand and engineering a craft cocktail with the other. bro got 400 spell power and a garnish rotation. Chain Lightning but make it farm-to-table.",
        "ELE SHAMAN DETECTED!!!!!! totems down. copper mug deployed. homegrown mint pre-procced. fresh lime squeezed on GCD. Bloodlust active. liver entering execute phase.",
@@ -296,5 +301,25 @@ ns.copypasta.Register("Drav", {
        "Zaby and Abroham friendship is like putting a golden retriever next to a senior software engineer. one accidentally pulls another pack, the other quietly opens GitHub and fixes reality.",
        "DRAVORK logs in, tops healing, gives calm advice, reviews code, refuses to elaborate. meanwhile the rest of the guild busy posting yaoi and losing raid gamba. civilization held together by one resto shaman.",
        "Drav bro got top 1000 gamer hands but uses them for healing random boomers in Black Temple and explaining why Zaby's merge conflicts are \"actually not that bad.\" saint behavior.",
+    },
+})
+
+ns.copypasta.Register("Panzer", {
+    chars = { "Panzervii" },
+    lines = {
+       "PANZERVII joins the guild TWO PHASES LATE!!!!!! looks around at every class in TBC and still locks hunter. incredible commitment to oversaturated labor markets. hired anyway. somehow..",
+       "panzerbro missed half the expansion then immediately wins Garona's Signet Ring. veteran guild members entering cardiac arrest. loot council filing incident reports. many such cases.",
+       "HUNTER BTW!!!!!! forgot to train GUNS. actual ranged class. equipped gun. no gun skill. panzer brother was RP walking every auto shot into existence. absolute generational gameplay.",
+       "Bagelbob got defeated by ROMAN NUMERALS. Panzervii casually says \"XVII\" and suddenly ZugGPT.exe encounters a fatal exception. raid delayed due to literacy mechanics.",
+    },
+})
+
+ns.copypasta.Register("Zugtism", {
+    chars = { "Zugtism" },
+    lines = {
+       "ZUGTISM joined the guild and immediately achieved perfect nominative determinism. zug? acquired. 'tism? also acquired. lore complete. no further investigation required.",
+       "ZUGTISM got that 2007 warrior naming convention where the character name is also the full autobiography. efficient. elegant. concerning.",
+       "bro named himself ZUGTISM so now every good play is lore accurate and every bad play is also lore accurate. impossible to review. airtight strategy.",
+       "brother skipped the introduction arc. guild roster just updated one day with \"ZUGTISM\" and everyone collectively decided \"yeah that checks out.\"",
     },
 })
