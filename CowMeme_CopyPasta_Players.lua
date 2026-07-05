@@ -42,6 +42,7 @@ ns.copypasta.Register("Cowman", {
 
 ns.copypasta.Register("Softy", {
     chars = { "Soffty", "Softsoap", "Proulx" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Softy",
     lines = {
         "eye of magtheridon? quags eye? those items dont exist in sofys world. only existence is getting robbed by halfmang and watching everyone else get bis while he rocks that lvl 40 green weapon.",
         "imagine grinding ur soul away just for halfmang to swipe that mindblade right out from under u AND the mongoose enchant??",
@@ -51,6 +52,7 @@ ns.copypasta.Register("Softy", {
 
 ns.copypasta.Register("Large", {
     chars = { "Largehands", "Phallussy", "Lil" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Large",
     lines = {
         "LMFAO Phallussy pulled threat AGAIN!!! \"oHhH nOhH\" STFU U GREN PARSE LOSER!!! he tells zug zug melee to stop dps while he spams seeds like a brainlet. srsly who named this toon?? 2026 and he still cant manage aggro at KaelThas???",
         "Largehands got that military cuck energy, seeds 12 packs on Vashj then acts shocked when raid explodes!!!!!! parsing > mechanics, healers blamed, RNG blamed, lag blamed,",
@@ -158,6 +160,7 @@ ns.copypasta.Register("Ben", {
 
 ns.copypasta.Register("Mcian", {
     chars = { "Javstar", "Chucksneed", "Mcian" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Mcian",
     lines = {
        "beans on a paper plate. tuna straight from the can. vape cloud visible from Netherstorm. absolutely locked in. mcian operating at a gamer frequency normally only detected by military satellites.",
        "every niche internet community eventually leads back to mcian. you ask where a copypasta came from and suddenly he's explaining a forum that had 37 members and was active for six weeks in 2011. keeper of forbidden texts.",
@@ -180,6 +183,7 @@ ns.copypasta.Register("Tom", {
 
 ns.copypasta.Register("Pink", {
     chars = { "Pìnksocket", "Scsihole", },
+    image = "Interface\\AddOns\\CowMeme\\images\\Pink",
     lines = {
        "PÌNKSOCKET FOUND IN A KARA PUG LIKE A SHINY POKEMON!!!!!! cow clicked inspect and accidentally recruited an entire expansion worth of aura farmers. bro arrived with a full prebuilt friend group DLC already installed.",
        "PINKSOCKET got that \"lol first time here?\" energy while perfectly positioning every pull, carrying threat, cracking jokes, and casually revealing he's got enough gladiator titles to wallpaper Shattrath.",
@@ -190,6 +194,7 @@ ns.copypasta.Register("Pink", {
 
 ns.copypasta.Register("Zaby", {
     chars = { "Zabyhunter", "Zabydruid","Zabypriest" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Zaby",
     lines = {
        "ZABYDISPEL INCIDENT still classified. Krosh shield removed with frame perfect precision. Mikeymage instantly experiencing new and exciting forms of fire damage. chat moving too fast for investigators to intervene.",
        "every time BAT PENETRAR starts pathing through Tempest Keep i hear the Windows XP error noise. ZABY pet got autonomous decision making and immediately chose domestic terrorism.",
@@ -214,6 +219,7 @@ ns.copypasta.Register("Dinadin", {
 
 ns.copypasta.Register("Mayo", {
     chars = { "Mâyo" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Mayo",
     lines = {
        "MÂYO brand new warlock. all we know: believes in a thing called love and absolutely lays it down. investigators requesting additional lore. none has been found. enough evidence to top meters.",
        "MÂYO named after the sauce and somehow that's already top 5 guild lore. shadow bolts creamy. curses emulsified. seed deployed. sandwich technology operating at maximum efficiency.",
@@ -236,6 +242,7 @@ ns.copypasta.Register("Scubastevo", {
 
 ns.copypasta.Register("Goose", {
     chars = { "Gigagoose" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Goose",
     lines = {
        "wrath hardcore speedrunning guild veteran energy. goose doesn’t follow strats, strats update themselves after observing goose behavior for 0.3 seconds.",
        "goose gets a 99 parse like it’s a side effect. no preparation, no setup, just existence. meanwhile the rest of the raid is still arguing about pull timer and he’s already done the fight in another timeline.",
@@ -264,6 +271,7 @@ ns.copypasta.Register("Locklando", {
 
 ns.copypasta.Register("Usalty", {
     chars = { "Usalty" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Usalty",
     lines = {
        "GUILD ANNOUNCEMENT: Usalty has been temporarily suspended from gamba for occupational health reasons. doctors citing acute gold deficiency after repeated exposure to Moist's economic theories.",
        "USALTY actually S-tier name. logged in, cooked once, never needed another reroll. meanwhile half the guild out here naming characters DINADIN and REPURGE. generational gap.",
@@ -286,6 +294,7 @@ ns.copypasta.Register("Mikey", {
 
 ns.copypasta.Register("Korpseparty", {
     chars = { "Korpseparty" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Korpseparty",
     lines = {
        "KOWPSEPAWTY joins discowd and my bwain immediatewy goes OWO???? UWU????? sowwy guys no mowe cawwouts... he said \"hewwo :)\" and now i'm bwushing wike an idiot.",
        "i inspect Korpseparty expecting eldritch horrors. instead i get the nicest most understanding little guy imaginable. this is false advertising of the highest order. OWO detected. UWU unavoidable.",
