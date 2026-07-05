@@ -176,6 +176,7 @@ local function ResetToDefaults()
     ns.db.copypasta.gambaMonitor = ns.defaults.copypasta.gambaMonitor
     ns.db.panel.shown  = ns.defaults.panel.shown
     ns.db.panel.locked = ns.defaults.panel.locked
+    ns.db.panel.size   = ns.defaults.panel.size
     ns.ApplyAllStates()
     ns.sync.Ping() -- willingness flags may have changed
     RefreshAll()

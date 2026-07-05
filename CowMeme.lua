@@ -188,10 +188,12 @@ local helpDetails = {
         "CopyPasta gamba announcing, sync leader, and panel state.",
     },
     panel = {
-        "|cffffff00/cm panel [show|hide|lock|unlock|reset|clear|test]|r",
-        "The CowMeme content panel: a small movable frame for images and text",
+        "|cffffff00/cm panel [show|hide|size|lock|unlock|reset|clear|test]|r",
+        "The CowMeme content panel: a movable frame for images and text",
         "(copypasta art, gamba top rolls, etc). Unlocked by default -- drag it",
-        "anywhere; its position is saved. Bare /cm panel shows the menu and state.",
+        "anywhere; its position is saved. Two sizes: /cm panel size small|medium,",
+        "or right-click the panel for a menu with sizes and close. Bare /cm panel",
+        "shows the menu and state.",
     },
 }
 
@@ -274,7 +276,16 @@ commands["options"] = function()
 end
 
 commands["panel"] = function(arg)
-    local sub = (arg or ""):lower()
+    local sub, val = (arg or ""):lower():match("^(%S*)%s*(%S*)")
+    if sub == "size" then
+        if val == "small" or val == "medium" then
+            ns.panel.SetSize(val)
+            ns.Print("Panel size: " .. val .. ".")
+        else
+            ns.Print("Usage: /cm panel size small|medium")
+        end
+        return
+    end
     if sub == "show" then
         ns.panel.SetShown(true)
         ns.Print("Panel shown.")
@@ -303,10 +314,12 @@ commands["panel"] = function(arg)
         ns.Print("Panel menu:")
         ns.panel.PrintStatus()
         print("  |cffffff00/cm panel show|hide|r   - show or hide the panel")
+        print("  |cffffff00/cm panel size <small|medium>|r - set panel size")
         print("  |cffffff00/cm panel lock|unlock|r - lock or unlock dragging")
         print("  |cffffff00/cm panel reset|r       - reset position to center")
         print("  |cffffff00/cm panel clear|r       - clear current content")
         print("  |cffffff00/cm panel test|r        - show sample content for 5s")
+        print("  Right-click the panel for sizes and close.")
     end
 end
 

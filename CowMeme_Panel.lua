@@ -7,16 +7,30 @@ local panel = ns.panel
 ns.defaults.panel = {
     shown  = true,
     locked = false, -- unlocked (movable) by default
+    size   = "small", -- small | medium (right-click the panel)
     point  = { "CENTER", 0, 200 }, -- anchor point, x, y on UIParent
 }
 
-local PANEL_WIDTH, PANEL_HEIGHT = 220, 170
-local IMAGE_SIZE = 64
-local HEADER_Y = -26    -- reserved persistent line, below the title
-local CONTENT_TOP = -44 -- image/text start below the header line
+-- Size presets. Dimensions hug the image: width = image + side margins,
+-- height = content top + image + a text line + footer. font is the content
+-- text font (small uses a smaller face to fit the tighter panel).
+local SIZES = {
+    small  = { image = 64,  width = 150, height = 140, font = "GameFontHighlightSmall" },
+    medium = { image = 128, width = 164, height = 204, font = "GameFontHighlight" },
+    -- large  = { image = 256, width = 292, height = 332, font = "GameFontHighlight" },
+}
+local SIZE_ORDER = { "small", "medium" }
+
+local HEADER_Y = -20    -- reserved persistent line, below the title
+local CONTENT_TOP = -34 -- image/text start below the header line
+
+local function CurrentSize()
+    local name = ns.db and ns.db.panel and ns.db.panel.size
+    return SIZES[name] or SIZES.small
+end
 
 local frame = CreateFrame("Frame", "CowMemePanel", UIParent, "BackdropTemplate")
-frame:SetSize(PANEL_WIDTH, PANEL_HEIGHT)
+frame:SetSize(SIZES.small.width, SIZES.small.height)
 frame:SetBackdrop({
     bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
     edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -30,20 +44,20 @@ frame:RegisterForDrag("LeftButton")
 frame:SetClampedToScreen(true)
 frame:Hide()
 
-local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-title:SetPoint("TOP", 0, -8)
+local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+title:SetPoint("TOP", 0, -5)
 title:SetText("|cff00ff00CowMeme|r")
 
 -- Reserved persistent line at the top (below the title). Managed separately
 -- from Display content, so roll updates and pasta cards don't disturb it.
 local header = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-header:SetPoint("TOPLEFT", 8, HEADER_Y)
-header:SetPoint("TOPRIGHT", -8, HEADER_Y)
+header:SetPoint("TOPLEFT", 5, HEADER_Y)
+header:SetPoint("TOPRIGHT", -5, HEADER_Y)
 header:SetJustifyH("CENTER")
 header:SetWordWrap(false)
 
 local image = frame:CreateTexture(nil, "ARTWORK")
-image:SetSize(IMAGE_SIZE, IMAGE_SIZE)
+image:SetSize(SIZES.small.image, SIZES.small.image)
 image:SetPoint("TOP", 0, CONTENT_TOP)
 image:Hide()
 
@@ -53,18 +67,21 @@ text:SetJustifyV("MIDDLE")
 
 -- Smaller line pinned to the bottom, for secondary/flavor text
 local footer = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-footer:SetPoint("BOTTOMLEFT", 6, 6)
-footer:SetPoint("BOTTOMRIGHT", -6, 6)
+footer:SetPoint("BOTTOMLEFT", 4, 3)
+footer:SetPoint("BOTTOMRIGHT", -4, 3)
 footer:SetJustifyH("CENTER")
 
 -- Anchor the content region below the header (and below the image when one is
--- shown); the bottom always leaves room for the footer.
-local function LayoutText(hasImage)
+-- shown); the bottom always leaves room for the footer. Stateful so a size
+-- change can re-layout whatever is currently displayed.
+local hasImage = false
+local function LayoutText()
+    local s = CurrentSize()
     text:ClearAllPoints()
-    text:SetPoint("TOPLEFT", 10, hasImage and (CONTENT_TOP - IMAGE_SIZE - 4) or CONTENT_TOP)
-    text:SetPoint("BOTTOMRIGHT", -10, 20)
+    text:SetPoint("TOPLEFT", 5, hasImage and (CONTENT_TOP - s.image - 2) or CONTENT_TOP)
+    text:SetPoint("BOTTOMRIGHT", -5, 16)
 end
-LayoutText(false)
+LayoutText()
 
 frame:SetScript("OnDragStart", function(self)
     if not ns.db.panel.locked then
@@ -76,6 +93,43 @@ frame:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
     local point, _, _, x, y = self:GetPoint(1)
     ns.db.panel.point = { point, x, y }
+end)
+
+-- Right-click menu: size presets and close
+local menuFrame = CreateFrame("Frame", "CowMemePanelMenu", UIParent, "UIDropDownMenuTemplate")
+
+local function InitMenu(self, level)
+    local info = UIDropDownMenu_CreateInfo()
+    info.text = "CowMeme Panel"
+    info.isTitle = true
+    info.notCheckable = true
+    UIDropDownMenu_AddButton(info, level)
+
+    for _, name in ipairs(SIZE_ORDER) do
+        info = UIDropDownMenu_CreateInfo()
+        info.text = name:gsub("^%l", string.upper)
+        info.checked = (ns.db.panel.size or "small") == name
+        info.func = function()
+            panel.SetSize(name)
+        end
+        UIDropDownMenu_AddButton(info, level)
+    end
+
+    info = UIDropDownMenu_CreateInfo()
+    info.text = "Close panel"
+    info.notCheckable = true
+    info.func = function()
+        panel.SetShown(false)
+        ns.Print("Panel closed. |cffffff00/cm panel show|r brings it back.")
+    end
+    UIDropDownMenu_AddButton(info, level)
+end
+
+frame:SetScript("OnMouseUp", function(self, button)
+    if button == "RightButton" then
+        UIDropDownMenu_Initialize(menuFrame, InitMenu, "MENU")
+        ToggleDropDownMenu(1, nil, menuFrame, "cursor", 3, -3)
+    end
 end)
 
 -- Show content on the panel. opts:
@@ -90,14 +144,14 @@ local footerTimer
 function panel.Display(opts)
     if not (ns.db.enabled and ns.db.panel.shown) then return end
     opts = opts or {}
+    hasImage = opts.image and true or false
     if opts.image then
         image:SetTexture(opts.image)
         image:Show()
-        LayoutText(true)
     else
         image:Hide()
-        LayoutText(false)
     end
+    LayoutText()
     text:SetText(opts.text or "")
     footer:SetText(opts.footer or "")
     if footerTimer then
@@ -132,7 +186,23 @@ function panel.Clear()
         footerTimer = nil
     end
     image:Hide()
-    LayoutText(false)
+    hasImage = false
+    LayoutText()
+end
+
+-- Apply the configured size preset to the frame, image, and text layout
+function panel.ApplySize()
+    local s = CurrentSize()
+    frame:SetSize(s.width, s.height)
+    image:SetSize(s.image, s.image)
+    text:SetFontObject(_G[s.font] or GameFontHighlight)
+    LayoutText()
+end
+
+function panel.SetSize(name)
+    if not SIZES[name] then return end
+    ns.db.panel.size = name
+    panel.ApplySize()
 end
 
 -- Set (or clear, with nil/"") the reserved top line. It persists independently
@@ -159,6 +229,7 @@ end
 -- The panel is visible only while the addon is enabled AND the user wants it
 -- shown. Disabling the addon hides the frame without touching the preference.
 function panel.ApplyState()
+    panel.ApplySize()
     if ns.db.enabled and ns.db.panel.shown then
         frame:Show()
     else
@@ -194,13 +265,17 @@ end
 function panel.PrintStatus()
     local shown  = ns.db.panel.shown  and "|cff00ff00ON|r" or "|cffff0000OFF|r"
     local locked = ns.db.panel.locked and "|cff00ff00ON|r" or "|cffff0000OFF|r"
-    print("  |cffFFD700Panel|r: shown " .. shown .. ", locked " .. locked)
+    print("  |cffFFD700Panel|r: shown " .. shown .. ", locked " .. locked ..
+        ", size " .. (ns.db.panel.size or "small"))
 end
 
 -- Called from OnLoad after db is ready
 function panel.Init()
     if not ns.db.panel then
-        ns.db.panel = { shown = true, locked = false, point = { "CENTER", 0, 200 } }
+        ns.db.panel = { shown = true, locked = false, size = "small", point = { "CENTER", 0, 200 } }
+    end
+    if not SIZES[ns.db.panel.size] then
+        ns.db.panel.size = "small" -- saves predating the size setting, or a removed size
     end
     panel.ApplyPosition()
     panel.ApplyState()
