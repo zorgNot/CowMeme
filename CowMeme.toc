@@ -13,3 +13,4 @@ CowMeme_Panel.lua
 CowMeme_FnC.lua
 CowMeme_CopyPasta.lua
 CowMeme_CopyPasta_Players.lua
+CowMeme_Options.lua

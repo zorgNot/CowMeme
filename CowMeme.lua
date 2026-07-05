@@ -44,6 +44,7 @@ function ns.OnLoad()
     ns.panel.Init()
     ns.fnc.Init()
     ns.copypasta.Init()
+    ns.options.Init()
 end
 
 function ns.OnLogin()
@@ -147,6 +148,12 @@ local helpDetails = {
         "|cffffff00/cm help [command]|r",
         "List all commands, or show details for one (e.g. /cm help enable).",
     },
+    options = {
+        "|cffffff00/cm options|r",
+        "Open the CowMeme options panel (also under ESC > Options > AddOns).",
+        "Every setting organized by module, with Default Settings and Clear All",
+        "Addon Data buttons.",
+    },
     enable = {
         "|cffffff00/cm enable|r",
         "Globally enable the addon. Resumes FnC death tracking and the CopyPasta",
@@ -184,6 +191,7 @@ commands["help"] = function()
     print("  |cffffff00/cm help [command]|r - show this message, or details for a command")
     print("  |cffffff00/cm enable|r      - enable the addon")
     print("  |cffffff00/cm disable|r     - disable the addon")
+    print("  |cffffff00/cm options|r     - open the options panel")
     print("  |cffffff00/cm debug|r       - debug menu (tracing, sandbox, sim commands)")
     print("  |cffffff00/cm panel|r       - content panel menu (show/hide/lock/move)")
     print("  |cffffff00/cm status|r      - show current settings")
@@ -254,6 +262,10 @@ commands["debug"] = function(arg)
         print("  |cffffff00/cp simroll <name> <n>|r        - feed a fake /roll to the top-roll tracker")
         print("  |cffffff00/cp simdemo [name]|r            - run the gamba demo, optionally targeting a player")
     end
+end
+
+commands["options"] = function()
+    ns.options.Open()
 end
 
 commands["panel"] = function(arg)
