@@ -1,8 +1,8 @@
 ## Interface: 20504
 ## Title: CowMeme
 ## Notes: A moo-velous addon
-## Author:
-## Version: 1.1.8
+## Author: Cowman
+## Version: 1.1.9
 ## DefaultState: enabled
 ## IconTexture: Interface\AddOns\CowMeme\images\image
 ## SavedVariables: CowMemeDB

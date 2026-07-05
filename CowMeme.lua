@@ -107,6 +107,15 @@ function ns.CanonicalChannel()
     return nil
 end
 
+-- Re-apply every module's event registrations and visibility from current
+-- settings. The single aggregate: new modules get added here, nowhere else.
+function ns.ApplyAllStates()
+    ns.sync.ApplyState()
+    ns.panel.ApplyState()
+    ns.fnc.ApplyState()
+    ns.copypasta.ApplyState()
+end
+
 -- Announce a line to the canonical channel. This is the only leader-gated
 -- path in the addon: one elected announcer speaks for everyone running it.
 -- cap is the capability the content belongs to ("G" = gamba pasta,
@@ -202,17 +211,13 @@ end
 
 commands["enable"] = function()
     ns.db.enabled = true
-    ns.sync.ApplyState()
-    ns.fnc.ApplyState()
-    ns.copypasta.ApplyState()
+    ns.ApplyAllStates()
     ns.Print("Enabled.")
 end
 
 commands["disable"] = function()
     ns.db.enabled = false
-    ns.sync.ApplyState()
-    ns.fnc.ApplyState()
-    ns.copypasta.ApplyState()
+    ns.ApplyAllStates()
     ns.Print("Disabled.")
 end
 

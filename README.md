@@ -1,6 +1,6 @@
 # CowMeme
 
-*Meme's for Cowman's favorite guildies*
+*Memes for Cowman's favorite guildies*
 
 A World of Warcraft TBC Anniversary addon for guild shenanigans.
 

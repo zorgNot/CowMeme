@@ -88,7 +88,7 @@ end)
 local clearTimer
 local footerTimer
 function panel.Display(opts)
-    if not ns.db.panel.shown then return end
+    if not (ns.db.enabled and ns.db.panel.shown) then return end
     opts = opts or {}
     if opts.image then
         image:SetTexture(opts.image)
@@ -139,7 +139,7 @@ end
 -- of Display content; duration is seconds until it auto-clears (omit to keep).
 local headerTimer
 function panel.SetHeader(msg, duration)
-    if not ns.db.panel.shown then return end
+    if not (ns.db.enabled and ns.db.panel.shown) then return end
     header:SetText(msg or "")
     if headerTimer then
         headerTimer:Cancel()
@@ -156,12 +156,21 @@ function panel.SetHeader(msg, duration)
     end
 end
 
-function panel.SetShown(shown)
-    ns.db.panel.shown = shown
-    if shown then
+-- The panel is visible only while the addon is enabled AND the user wants it
+-- shown. Disabling the addon hides the frame without touching the preference.
+function panel.ApplyState()
+    if ns.db.enabled and ns.db.panel.shown then
         frame:Show()
     else
         frame:Hide()
+    end
+end
+
+function panel.SetShown(shown)
+    ns.db.panel.shown = shown
+    panel.ApplyState()
+    if shown and not ns.db.enabled then
+        ns.Print("Panel will appear when the addon is enabled (/cm enable).")
     end
 end
 
@@ -194,7 +203,5 @@ function panel.Init()
         ns.db.panel = { shown = true, locked = false, point = { "CENTER", 0, 200 } }
     end
     panel.ApplyPosition()
-    if ns.db.panel.shown then
-        frame:Show()
-    end
+    panel.ApplyState()
 end

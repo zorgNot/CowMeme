@@ -7,13 +7,22 @@ local options = ns.options
 local panel = CreateFrame("Frame", "CowMemeOptionsPanel")
 panel.name = "CowMeme"
 
--- All checkboxes, refreshed on show and after resets
+-- All checkboxes, refreshed on show, after any click, and after resets.
+-- A checkbox with a depends() that returns false is greyed out: the setting
+-- is preserved but currently has no effect.
 local checkboxes = {}
 local checkCount = 0
 
 local function RefreshAll()
     for _, cb in ipairs(checkboxes) do
         cb:SetChecked(cb.get())
+        if not cb.depends or cb.depends() then
+            cb:Enable()
+            cb.labelFS:SetFontObject(GameFontHighlight)
+        else
+            cb:Disable()
+            cb.labelFS:SetFontObject(GameFontDisable)
+        end
     end
 end
 
@@ -41,7 +50,7 @@ y = y - 24
 
 local subtitle = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
 subtitle:SetPoint("TOPLEFT", 16, y)
-subtitle:SetText("Meme's for Cowman's favorite guildies. Changes apply immediately.")
+subtitle:SetText("Changes apply immediately.")
 y = y - 28
 
 local function AddHeader(text)
@@ -51,17 +60,19 @@ local function AddHeader(text)
     y = y - 22
 end
 
-local function AddCheckbox(label, tooltip, get, set)
+local function AddCheckbox(label, tooltip, get, set, depends)
     checkCount = checkCount + 1
     local cb = CreateFrame("CheckButton", "CowMemeOptionsCheck" .. checkCount, panel, "UICheckButtonTemplate")
     cb:SetSize(26, 26)
     cb:SetPoint("TOPLEFT", 24, y)
-    local text = _G[cb:GetName() .. "Text"]
-    text:SetFontObject(GameFontHighlight)
-    text:SetText(label)
+    cb.labelFS = _G[cb:GetName() .. "Text"]
+    cb.labelFS:SetFontObject(GameFontHighlight)
+    cb.labelFS:SetText(label)
     cb.get = get
+    cb.depends = depends
     cb:SetScript("OnClick", function(self)
         set(self:GetChecked() and true or false)
+        RefreshAll() -- dependents may need to grey/ungrey
     end)
     AddTooltip(cb, label, tooltip)
     table.insert(checkboxes, cb)
@@ -69,17 +80,20 @@ local function AddCheckbox(label, tooltip, get, set)
     return cb
 end
 
+-- Dependency predicates for greying
+local function AddonEnabled() return ns.db.enabled end
+local function DebugOn() return ns.db.debug end
+local function PanelVisible() return ns.db.enabled and ns.db.panel.shown end
+
 -- ===== General =====
 AddHeader("General")
 
 AddCheckbox("Enable CowMeme",
-    "Master switch. When off, death tracking, the gamba monitor, the sync heartbeat, and all automated announcements are suspended. Slash commands still work.",
+    "Master switch. When off, death tracking, the gamba monitor, the sync heartbeat, the panel, and all automated announcements are suspended. Slash commands still work.",
     function() return ns.db.enabled end,
     function(v)
         ns.db.enabled = v
-        ns.sync.ApplyState()
-        ns.fnc.ApplyState()
-        ns.copypasta.ApplyState()
+        ns.ApplyAllStates()
     end)
 
 -- ===== Fast and Clean =====
@@ -88,7 +102,8 @@ AddHeader("Fast and Clean")
 AddCheckbox("Batch milestone announcements",
     "Collect deaths that hit the same milestone within 1.5 seconds and announce them together (e.g. \"A and B ARE ON A DYING SPREE!\"). Always on while in a raid, regardless of this setting.",
     function() return ns.db.fnc.batch end,
-    function(v) ns.db.fnc.batch = v end)
+    function(v) ns.db.fnc.batch = v end,
+    AddonEnabled)
 
 -- ===== CopyPasta =====
 AddHeader("CopyPasta")
@@ -96,10 +111,8 @@ AddHeader("CopyPasta")
 AddCheckbox("Announce gamba pastas to chat",
     "Be willing to announce a registered loser's copypasta when a CrossGambling game ends. One elected announcer among willing clients actually speaks, so this causes no double-posting. Panel display is unaffected by this setting.",
     function() return ns.db.copypasta.gambaMonitor end,
-    function(v)
-        ns.db.copypasta.gambaMonitor = v
-        ns.sync.Ping() -- advertise the changed willingness promptly
-    end)
+    function(v) ns.copypasta.SetAnnouncing(v) end,
+    AddonEnabled)
 
 -- ===== Panel =====
 AddHeader("Panel")
@@ -107,12 +120,14 @@ AddHeader("Panel")
 AddCheckbox("Show panel",
     "Show the CowMeme on-screen panel (gamba rolls, the host's owes line, pasta cards). While hidden, incoming content is dropped.",
     function() return ns.db.panel.shown end,
-    function(v) ns.panel.SetShown(v) end)
+    function(v) ns.panel.SetShown(v) end,
+    AddonEnabled)
 
 AddCheckbox("Lock panel position",
-    "Prevent the panel from being dragged. Unlock to move it; its position is saved between sessions.",
+    "Prevent the panel from being dragged. Unlock to move it; its position is saved between sessions. Only applies while the panel is shown.",
     function() return ns.db.panel.locked end,
-    function(v) ns.panel.SetLocked(v) end)
+    function(v) ns.panel.SetLocked(v) end,
+    PanelVisible)
 
 -- ===== Debug (always last) =====
 AddHeader("Debug")
@@ -125,22 +140,26 @@ AddCheckbox("Debug mode",
 AddCheckbox("Sandbox mode",
     "Print would-be chat announcements locally instead of sending them. Only takes effect while debug mode is on.",
     function() return ns.db.debugSandbox end,
-    function(v) ns.db.debugSandbox = v end)
+    function(v) ns.db.debugSandbox = v end,
+    DebugOn)
 
 AddCheckbox("Verbose tracing",
     "Extra-noisy tracing: per-damage-event logging and the heartbeat leader announce. Only takes effect while debug mode is on.",
     function() return ns.db.debugVerbose end,
-    function(v) ns.db.debugVerbose = v end)
+    function(v) ns.db.debugVerbose = v end,
+    DebugOn)
 
 AddCheckbox("FnC tracing",
     "Show Fast and Clean decision tracing (ignored deaths, cause lookups, batching) while debug mode is on.",
     function() return ns.db.debugFnc end,
-    function(v) ns.db.debugFnc = v end)
+    function(v) ns.db.debugFnc = v end,
+    DebugOn)
 
 AddCheckbox("CopyPasta tracing",
     "Show CopyPasta decision tracing (gamba matches, roll tracking, announce decisions) while debug mode is on.",
     function() return ns.db.debugCp end,
-    function(v) ns.db.debugCp = v end)
+    function(v) ns.db.debugCp = v end,
+    DebugOn)
 
 -- ===== Danger zone buttons =====
 y = y - 10
@@ -155,12 +174,10 @@ local function ResetToDefaults()
     ns.db.debugCp      = ns.defaults.debugCp
     ns.db.fnc.batch    = ns.defaults.fnc.batch
     ns.db.copypasta.gambaMonitor = ns.defaults.copypasta.gambaMonitor
+    ns.db.panel.shown  = ns.defaults.panel.shown
     ns.db.panel.locked = ns.defaults.panel.locked
-    ns.panel.SetShown(ns.defaults.panel.shown)
-    ns.sync.ApplyState()
-    ns.fnc.ApplyState()
-    ns.copypasta.ApplyState()
-    ns.sync.Ping()
+    ns.ApplyAllStates()
+    ns.sync.Ping() -- willingness flags may have changed
     RefreshAll()
     ns.Print("Settings reset to defaults.")
 end

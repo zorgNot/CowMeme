@@ -322,15 +322,21 @@ function cp.ApplyState()
     end
 end
 
+-- The one writer for announce-willingness: stores the setting and advertises
+-- the changed G flag promptly. Slash wrappers add chat feedback; the options
+-- panel calls this directly.
+function cp.SetAnnouncing(v)
+    ns.db.copypasta.gambaMonitor = v
+    ns.sync.Ping()
+end
+
 function cp.EnableGamba()
-    ns.db.copypasta.gambaMonitor = true
-    ns.sync.Ping() -- advertise the G flag promptly
+    cp.SetAnnouncing(true)
     ns.Print("|cffFFD700[CopyPasta]|r Gamba announcing |cff00ff00ON|r.")
 end
 
 function cp.DisableGamba()
-    ns.db.copypasta.gambaMonitor = false
-    ns.sync.Ping()
+    cp.SetAnnouncing(false)
     ns.Print("|cffFFD700[CopyPasta]|r Gamba announcing |cffff0000OFF|r (panel display stays on).")
 end
 
