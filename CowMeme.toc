@@ -2,7 +2,7 @@
 ## Title: CowMeme
 ## Notes: A moo-velous addon
 ## Author: Cowman
-## Version: 1.2.01
+## Version: 1.2.02
 ## DefaultState: enabled
 ## IconTexture: Interface\AddOns\CowMeme\images\image
 ## SavedVariables: CowMemeDB

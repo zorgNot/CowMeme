@@ -142,7 +142,7 @@ ns.copypasta.Register("Anna", {
     lines = {
         "The guild spent six months convinced Anna was running an industrial-scale farming operation. Every time someone needed consumes she'd appear out of the void with 800 stacks and no explanation. Actual NPC behavior.",
         "SERPENT MEAT. MORE SERPENT MEAT. EVEN MORE SERPENT MEAT!!!!!! Nobody knows what she's cooking. Nobody knows where it all goes. The only certainty is that another thousand snakes have vanished from the ecosystem.",
-        "XxANNA_RESOURCEQUEENxX enters zone. local wildlife leaves zone. economy leaves zone. reality leaves zone. One minute you're doing dailies, next she's explaining a serpent meat arbitrage opportunity in guild chat and nobody knows what happened.",
+        "XxANNA_RESOURCEQUEENxX enters zone. local wildlife leaves zone. economy leaves zone. reality leaves zone. One minute doing dailies, next she's splaining a serpent meat arbitrage opportunity in guild chat and nobody knows what happened.",
         "OLD SCHOOL FORUM POST ENERGY: \"LF ANNA\" Last seen somewhere in Outland skinning an entire biome into extinction. If found, please return to raid before she accidentally corners the global serpent meat market again. kthxbye.",
     },
 })
@@ -319,6 +319,7 @@ ns.copypasta.Register("Drav", {
 
 ns.copypasta.Register("Panzer", {
     chars = { "Panzervii, Panzerix" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Panzer",
     lines = {
        "PANZERVII joins the guild TWO PHASES LATE!!!!!! looks around at every class in TBC and still locks hunter. incredible commitment to oversaturated labor markets. hired anyway. somehow..",
        "panzerbro missed half the expansion then immediately wins Garona's Signet Ring. veteran guild members entering cardiac arrest. loot council filing incident reports. many such cases.",
@@ -335,5 +336,18 @@ ns.copypasta.Register("Zugtism", {
        "ZUGTISM got that 2007 warrior naming convention where the character name is also the full autobiography. efficient. elegant. concerning.",
        "bro named himself ZUGTISM so now every good play is lore accurate and every bad play is also lore accurate. impossible to review. airtight strategy.",
        "brother skipped the introduction arc. guild roster just updated one day with \"ZUGTISM\" and everyone collectively decided \"yeah that checks out.\"",
+    },
+})
+
+ns.copypasta.Register("Uncle", {
+    chars = { "Unclesensei" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Uncle",
+    lines = {
+       "UNCLESENSEI spawned into Kara like a world boss. first lockout, vacuums half the loot table, refuses to explain, disappears for two weeks. average uncle behavior.",
+       "Cow still calling him UNCLEAN CERSEI for reasons lost to history. nobody corrects him anymore. the timeline has diverged too far to be repaired.",
+       "UNCLE - HUGE ARMS WARRIOR DETECTED!!!!!! Deepstink voucher accepted immediately. cleans out Karazhan, takes a \"short break,\" returns with an unhealthy emotional attachment to the floor.",
+       "UNCLESENSEI got recruited through the Deepstink extended universe. one day he simply materialized, geared himself, disappeared, then returned with a newfound appreciation for laying perfectly horizontal.",
+       "UNCLEAN CERSEI!!!!!! WHO IS CERSEI!!!!!! WHY IS SHE UNCLEAN!!!!!! nobody knows. Cow just says it with complete confidence and the guild accepted it as ancient scripture.",
+       "UNCLESENSEI joined, looted, vanished, reappeared, and immediately started parsing the terrain instead of the boss. Deepstink IRL connection confirmed. floor connection stronger.",
     },
 })
