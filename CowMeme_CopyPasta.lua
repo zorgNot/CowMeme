@@ -177,7 +177,7 @@ local function UpdateRollPanel(footer)
     end
     local lines = { "|cffFFD700Gamba|r" .. (gambaStake and (" (1-" .. gambaStake .. ")") or "") }
     if not topRoll then
-        table.insert(lines, "waiting for rolls...")
+        table.insert(lines, rollsOpen and "Waiting for rolls..." or "Waiting for entries...")
     else
         table.insert(lines, "Top: " .. topName .. " - " .. topRoll)
         table.insert(lines, "Bottom: " .. botName .. " - " .. botRoll)
@@ -242,6 +242,7 @@ local function OnGambaChat(msg, sender)
         if sender == activeHost then
             rollsOpen = true
             ns.DebugPrint("cp", "gamba: entries closed, rolls now counting")
+            UpdateRollPanel() -- flip the panel to "Waiting for rolls..."
         end
         return
     end
@@ -439,7 +440,7 @@ local function HandleSlash(input)
         C_Timer.After(t, function() OnSystemMsg(target .. " rolls 3 (1-100)") end)
         C_Timer.After(t + 1, function()
             ns.ForceSandbox(3)
-            OnGambaChat(target .. " owes 84g", "SimHost")
+            OnGambaChat(target .. " owes 84g to a very long name", "SimHost")
         end)
         return
     end

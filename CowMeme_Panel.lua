@@ -12,17 +12,17 @@ ns.defaults.panel = {
 }
 
 -- Size presets. Dimensions hug the image: width = image + side margins,
--- height = content top + image + a text line + footer. font is the content
--- text font (small uses a smaller face to fit the tighter panel).
+-- height = content top (two-line header) + image + a text line + footer. font
+-- is the content text font (small uses a smaller face to fit the tighter panel).
 local SIZES = {
-    small  = { image = 64,  width = 150, height = 140, font = "GameFontHighlightSmall" },
-    medium = { image = 128, width = 164, height = 204, font = "GameFontHighlight" },
-    -- large  = { image = 256, width = 292, height = 332, font = "GameFontHighlight" },
+    small  = { image = 64,  width = 150, height = 154, font = "GameFontHighlightSmall" },
+    medium = { image = 128, width = 164, height = 218, font = "GameFontHighlight" },
+    -- large  = { image = 256, width = 292, height = 346, font = "GameFontHighlight" },
 }
 local SIZE_ORDER = { "small", "medium" }
 
-local HEADER_Y = -20    -- reserved persistent line, below the title
-local CONTENT_TOP = -34 -- image/text start below the header line
+local HEADER_Y = -20    -- reserved persistent header, below the title
+local CONTENT_TOP = -48 -- image/text start below the two-line header region
 
 local function CurrentSize()
     local name = ns.db and ns.db.panel and ns.db.panel.size
@@ -48,13 +48,16 @@ local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 title:SetPoint("TOP", 0, -5)
 title:SetText("|cff00ff00CowMeme|r")
 
--- Reserved persistent line at the top (below the title). Managed separately
+-- Reserved persistent header at the top (below the title). Managed separately
 -- from Display content, so roll updates and pasta cards don't disturb it.
+-- Wraps to two lines so a long gamba "owes" result isn't truncated; the
+-- content region below reserves space for both lines.
 local header = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 header:SetPoint("TOPLEFT", 5, HEADER_Y)
 header:SetPoint("TOPRIGHT", -5, HEADER_Y)
 header:SetJustifyH("CENTER")
-header:SetWordWrap(false)
+header:SetWordWrap(true)
+if header.SetMaxLines then header:SetMaxLines(2) end -- cap so it can't push into content
 
 local image = frame:CreateTexture(nil, "ARTWORK")
 image:SetSize(SIZES.small.image, SIZES.small.image)
