@@ -254,6 +254,7 @@ ns.copypasta.Register("Goose", {
 
 ns.copypasta.Register("Treyway", {
     chars = { "Treywayt" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Treyway",
     lines = {
        "treywayt. no mic. no chat. no emotes. just /dance once per raid then proceeds to delete half the boss HP bar with pure silence and windfury autism.",
        "TREYWAYT logs in, drops totems, auto-pilots rotation, maybe looks at Netflix on second monitor spiritually, logs out. combat log says “present.”",
@@ -264,6 +265,7 @@ ns.copypasta.Register("Treyway", {
 
 ns.copypasta.Register("Locklando", {
     chars = { "Locklando" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Locklando",
     lines = {
        "for the love of god all i know about locklando is he did a good job tanking the blind spinning boss when large is out",
     },
@@ -284,6 +286,7 @@ ns.copypasta.Register("Usalty", {
 
 ns.copypasta.Register("Mikey", {
     chars = { "Mikeymage","Acrobat" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Mikey",
     lines = {
        "YOOOOO MIKEYYYYY!!!!!! nobody has ever said \"hey michael.\" impossible. biological limitation. guild law states every greeting must be at least 40% louder than necessary. vibes parse permanently orange.",
        "MICHAEL J MAGE got that legendary aura where every story starts with \"bro you weren't there...\" and immediately spirals into increasingly unverifiable historical events involving extinct trogg civilizations.",
@@ -305,6 +308,7 @@ ns.copypasta.Register("Korpseparty", {
 
 ns.copypasta.Register("Drav", {
     chars = { "Dravork" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Drav",
     lines = {
        "DRAVORK AKA ABROHAM!!!!!! top 1000 player in the HISTORY OF THE WORLD btw. not server. not region. WORLD. meanwhile sitting in Discord patiently explaining git to Zaby for the 14th time. impossible stat allocation.",
        "Zaby and Abroham friendship is like putting a golden retriever next to a senior software engineer. one accidentally pulls another pack, the other quietly opens GitHub and fixes reality.",
@@ -314,7 +318,7 @@ ns.copypasta.Register("Drav", {
 })
 
 ns.copypasta.Register("Panzer", {
-    chars = { "Panzervii" },
+    chars = { "Panzervii, Panzerix" },
     lines = {
        "PANZERVII joins the guild TWO PHASES LATE!!!!!! looks around at every class in TBC and still locks hunter. incredible commitment to oversaturated labor markets. hired anyway. somehow..",
        "panzerbro missed half the expansion then immediately wins Garona's Signet Ring. veteran guild members entering cardiac arrest. loot council filing incident reports. many such cases.",
@@ -325,6 +329,7 @@ ns.copypasta.Register("Panzer", {
 
 ns.copypasta.Register("Zugtism", {
     chars = { "Zugtism" },
+    image = "Interface\\AddOns\\CowMeme\\images\\Zugtism",
     lines = {
        "ZUGTISM joined the guild and immediately achieved perfect nominative determinism. zug? acquired. 'tism? also acquired. lore complete. no further investigation required.",
        "ZUGTISM got that 2007 warrior naming convention where the character name is also the full autobiography. efficient. elegant. concerning.",
