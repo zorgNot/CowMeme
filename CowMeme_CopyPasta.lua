@@ -125,7 +125,10 @@ function cp.Send(input, channel)
     local line = BuildMessage(entry.lines[math.random(1, #entry.lines)])
 
     if not channel or channel == "" then
-        if IsInRaid() then
+        -- Auto-detect; instanced groups (BG/arena) only accept INSTANCE_CHAT
+        if LE_PARTY_CATEGORY_INSTANCE and IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+            channel = "INSTANCE_CHAT"
+        elseif IsInRaid() then
             channel = "RAID"
         elseif IsInGroup() then
             channel = "PARTY"
