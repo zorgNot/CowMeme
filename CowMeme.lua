@@ -44,6 +44,7 @@ function ns.OnLoad()
     ns.panel.Init()
     ns.fnc.Init()
     ns.copypasta.Init()
+    ns.gambaRoster.Init()
     ns.options.Init()
 end
 
@@ -114,6 +115,7 @@ function ns.ApplyAllStates()
     ns.panel.ApplyState()
     ns.fnc.ApplyState()
     ns.copypasta.ApplyState()
+    ns.gambaRoster.ApplyState()
 end
 
 -- Announce a line to the canonical channel. This is the only leader-gated
@@ -187,6 +189,14 @@ local helpDetails = {
         "Show current settings: addon enabled/debug, FnC tracking and batch mode,",
         "CopyPasta gamba announcing, sync leader, and panel state.",
     },
+    roster = {
+        "|cffffff00/cm roster [status|demo|start|add|remove|close|roll|remind]|r",
+        "The gamba signup roster (built from CrossGambling's own broadcasts) and",
+        "the roll-nudge button. /cm roster status lists who signed up but hasn't",
+        "rolled. The rest are debug sims (need /cm debug on); /cm roster demo runs",
+        "the whole lifecycle so you can test the Nudge button without a live game.",
+        "/cm roster finish rolls out everyone still pending and closes the game.",
+    },
     panel = {
         "|cffffff00/cm panel [show|hide|size|lock|unlock|reset|clear|test]|r",
         "The CowMeme content panel: a movable frame for images and text",
@@ -205,6 +215,9 @@ commands["help"] = function()
     print("  |cffffff00/cm options|r     - open the options panel")
     print("  |cffffff00/cm debug|r       - debug menu (tracing, sandbox, sim commands)")
     print("  |cffffff00/cm panel|r       - content panel menu (show/hide/lock/move)")
+    if ns.db.debug then
+        print("  |cffffff00/cm roster|r      - (debug) gamba roster and roll-nudge sims")
+    end
     print("  |cffffff00/cm status|r      - show current settings")
     print("  |cffffff00/fnc help|r       - Fast and Clean death tracker (see for details)")
     print("  |cffffff00/cp help|r        - CopyPasta (see for details)")
@@ -323,6 +336,63 @@ commands["panel"] = function(arg)
     end
 end
 
+commands["roster"] = function(arg)
+    if not ns.db.debug then
+        ns.Print("Roster commands are debug-only: /cm debug on")
+        return
+    end
+
+    local sub, rest = (arg or ""):match("^(%S*)%s*(.*)")
+    sub = sub:lower()
+
+    if sub == "status" then
+        ns.gambaRoster.PrintStatus()
+        return
+    end
+    if sub == "" then
+        ns.Print("Gamba roster commands (debug):")
+        ns.gambaRoster.PrintStatus()
+        print("  |cffffff00/cm roster status|r        - show signups and who is pending")
+        print("  |cffffff00/cm roster demo|r          - run the full lifecycle sim")
+        print("  |cffffff00/cm roster start [wager]|r - sim a new game (default 100)")
+        print("  |cffffff00/cm roster add <name>|r    - sim a signup")
+        print("  |cffffff00/cm roster remove <name>|r - sim a withdrawal")
+        print("  |cffffff00/cm roster close|r         - sim entries closed (roll phase)")
+        print("  |cffffff00/cm roster roll <name> [v]|r - sim a roll")
+        print("  |cffffff00/cm roster finish|r        - roll out all pending and close the game")
+        print("  |cffffff00/cm roster remind|r        - fire the reminder now")
+        return
+    end
+
+    if sub == "demo" then
+        ns.gambaRoster.SimDemo()
+    elseif sub == "start" then
+        ns.gambaRoster.SimStart(tonumber(rest))
+        ns.Print("Roster sim: new game" .. (tonumber(rest) and (" (1-" .. tonumber(rest) .. ")") or " (1-100)") .. ".")
+    elseif sub == "add" then
+        local name = rest:match("^(%S+)")
+        if name then ns.gambaRoster.SimAdd(name); ns.Print("Roster sim: signed up " .. name .. ".")
+        else ns.Print("Usage: /cm roster add <name>") end
+    elseif sub == "remove" then
+        local name = rest:match("^(%S+)")
+        if name then ns.gambaRoster.SimRemove(name); ns.Print("Roster sim: removed " .. name .. ".")
+        else ns.Print("Usage: /cm roster remove <name>") end
+    elseif sub == "close" then
+        ns.gambaRoster.SimClose()
+        ns.Print("Roster sim: entries closed.")
+    elseif sub == "roll" then
+        local name, val = rest:match("^(%S+)%s*(%d*)")
+        if name then ns.gambaRoster.SimRoll(name, tonumber(val)); ns.Print("Roster sim: " .. name .. " rolled.")
+        else ns.Print("Usage: /cm roster roll <name> [value]") end
+    elseif sub == "finish" then
+        ns.gambaRoster.SimFinish()
+    elseif sub == "remind" then
+        ns.gambaRoster.SendReminder()
+    else
+        ns.Print("Unknown roster command \"" .. sub .. "\". Try /cm roster.")
+    end
+end
+
 commands["status"] = function()
     ns.Print("Status:")
     local line = "  |cffFFD700CowMeme|r: enabled " .. OnOff(ns.db.enabled) .. ", debug " .. OnOff(ns.db.debug)
@@ -343,7 +413,9 @@ local function HandleSlash(input)
     cmd = cmd:lower()
     -- "/cm help <command>" shows detailed help for that command
     if cmd == "help" and arg ~= "" then
-        local lines = helpDetails[arg:lower()]
+        local key = arg:lower()
+        local lines = helpDetails[key]
+        if key == "roster" and not ns.db.debug then lines = nil end -- roster is debug-only
         if lines then
             for _, line in ipairs(lines) do print(line) end
         else

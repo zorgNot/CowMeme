@@ -135,6 +135,50 @@ frame:SetScript("OnMouseUp", function(self, button)
     end
 end)
 
+-- Optional action button hanging just below the panel. Generic: other modules
+-- wire its behavior via SetNudgeHandler and toggle it via SetNudge. Parented
+-- to the panel, so it moves, hides, and disables along with it.
+local nudgeButton = CreateFrame("Button", "CowMemeNudgeButton", frame, "UIPanelButtonTemplate")
+nudgeButton:SetHeight(20)
+nudgeButton:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -2)
+nudgeButton:SetPoint("TOPRIGHT", frame, "BOTTOMRIGHT", 0, -2)
+nudgeButton:SetText("Nudge a roller")
+nudgeButton:Hide()
+
+local nudgeCount = 0 -- last count passed to SetNudge, remembered for ApplyState
+
+function panel.SetNudgeHandler(fn)
+    nudgeButton:SetScript("OnClick", function() fn() end)
+end
+
+-- Show/hide the nudge button and label it with how many are still pending.
+-- count: 0/nil hides it; a positive number shows "Nudge a roller (#)".
+-- Actual visibility also requires the panel to be enabled and shown.
+-- Remembered so ApplyState can re-evaluate on enable/disable.
+function panel.SetNudge(count)
+    nudgeCount = count or 0
+    local wanted = nudgeCount > 0
+    if wanted then
+        nudgeButton:SetText("Nudge a roller (" .. nudgeCount .. ")")
+    end
+    if wanted and ns.db.enabled and ns.db.panel.shown then
+        nudgeButton:Show()
+    else
+        nudgeButton:Hide()
+    end
+end
+
+-- Grey out (or restore) the button, e.g. while a caller-owned throttle is
+-- active. Independent of Show/Hide -- WoW buttons keep their enabled state
+-- across visibility changes, so this survives the button hiding/reappearing.
+function panel.SetNudgeEnabled(enabled)
+    if enabled then
+        nudgeButton:Enable()
+    else
+        nudgeButton:Disable()
+    end
+end
+
 -- Show content on the panel. opts:
 --   text           - string to display
 --   image          - texture path (e.g. "Interface\\AddOns\\CowMeme\\images\\image")
@@ -238,6 +282,7 @@ function panel.ApplyState()
     else
         frame:Hide()
     end
+    panel.SetNudge(nudgeCount) -- re-evaluate button visibility for the new state
 end
 
 function panel.SetShown(shown)

@@ -169,7 +169,7 @@ local gambaStake = nil -- max roll of the current game, parsed from the start li
 
 -- Roll tracking for the active gamba game: first /roll per player counts
 local gambaRolls = {} -- { [playerName] = roll }
-local FOOTER_DURATION = 1 -- seconds the "get fucked" callout stays visible
+local FOOTER_DURATION = 1.5 -- seconds the "get fucked" callout stays visible
 
 -- footer: optional one-shot callout that auto-clears after FOOTER_DURATION
 local function UpdateRollPanel(footer)
