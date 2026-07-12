@@ -7,3 +7,4 @@ enable-nolib-creation: no
 ignore:
     - watch.ps1
     - README.md
+    - CrossGambling.md

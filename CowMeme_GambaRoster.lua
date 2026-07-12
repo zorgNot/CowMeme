@@ -80,6 +80,7 @@ local stake = nil        -- wager (max roll) from SET_WAGER, or nil if unseen
 local rolling = false    -- true once entries close (Disable_Join)
 local gameChannel = nil  -- channel CG comm arrived on = where to send reminders
 local lastReminder = 0
+local tie = nil          -- { type = "High"/"Low", names = {...} } while a tie is live
 
 local frame = CreateFrame("Frame", "CowMemeGambaRosterFrame", UIParent)
 
@@ -91,6 +92,7 @@ local function ClearRoster()
     wipe(players)
     stake = nil
     rolling = false
+    tie = nil
 end
 
 -- Pending = signed up but not yet rolled
@@ -120,6 +122,53 @@ end
 local function RefreshButton()
     -- Pending count is only meaningful during the roll phase
     ns.panel.SetNudge(rolling and #roster.Pending() or 0)
+end
+
+-- CrossGambling broadcasts no tie-breaker event on the addon-comm plane, so we
+-- detect it ourselves once every signup has rolled: a shared top (High) or
+-- bottom (Low) roll forces those players to re-roll. We re-open the tied players
+-- as pending (which brings the Nudge button back with their count) and announce
+-- the tie locally. Mirrors CrossGambling's High-priority tie resolution.
+local function CheckForTie()
+    if not rolling then return end
+    for _, p in pairs(players) do
+        if not p.rolled then return end -- someone still owes a roll; wait for them
+    end
+
+    local hi, lo
+    for _, p in pairs(players) do
+        if not hi or p.roll > hi then hi = p.roll end
+        if not lo or p.roll < lo then lo = p.roll end
+    end
+    if not hi then return end -- no rolls recorded
+
+    local highs, lows = {}, {}
+    for name, p in pairs(players) do
+        if p.roll == hi then table.insert(highs, name) end
+        if p.roll == lo then table.insert(lows, name) end
+    end
+
+    local tieType, tied
+    if #highs > 1 then
+        tieType, tied = "High", highs
+    elseif #lows > 1 then
+        tieType, tied = "Low", lows
+    end
+
+    if not tieType then
+        tie = nil -- unique winner and loser: resolved
+        return
+    end
+
+    tie = { type = tieType, names = tied }
+    for _, name in ipairs(tied) do
+        players[name].rolled = false -- re-open for the re-roll
+        players[name].roll = nil
+    end
+    ns.DebugPrint("roster", tieType .. " tie breaker among " .. table.concat(tied, ", "))
+    ns.Print("|cffFFD700[Gamba]|r " .. tieType .. " tie breaker: " ..
+        table.concat(tied, ", ") .. " must re-roll.")
+    RefreshButton()
 end
 
 -- CrossGambling comm: event or event:arg under the CrossGambling prefix
@@ -162,8 +211,11 @@ local function OnSystemMsg(text)
     local p = players[name]
     if p and not p.rolled then
         p.rolled = true
-        ns.DebugPrint("roster", "rolled: " .. name .. " (" .. #roster.Pending() .. " still pending)")
+        p.roll = tonumber(roll) -- kept so we can detect high/low ties locally
+        ns.DebugPrint("roster", "rolled: " .. name .. " = " .. roll ..
+            " (" .. #roster.Pending() .. " still pending)")
         RefreshButton()
+        CheckForTie()
     end
 end
 
@@ -220,6 +272,7 @@ function roster.PrintStatus()
     print("  |cffFFD700Roster|r: " .. total .. " signed up, " .. #pending .. " pending"
         .. (rolling and " (rolling)" or " (entries open)")
         .. (stake and (", stake 1-" .. stake) or "")
+        .. (tie and (", " .. tie.type .. " tie: " .. table.concat(tie.names, ", ")) or "")
         .. (#pending > 0 and (" [" .. table.concat(pending, ", ") .. "]") or ""))
 end
 
@@ -296,6 +349,39 @@ function roster.SimDemo()
     C_Timer.After(5, function()
         roster.SimRoll("Moistorcs", 50)
         ns.Print("|cffFFD700[Gamba]|r Moistorcs rolled; Beaglz & Soffty still pending. Click Nudge (sandboxed ~60s) or /cm roster roll <name> to finish.")
+    end)
+end
+
+-- Tie-breaker demo: signups all roll, two of them tie for the top (high) or
+-- bottom (low), which re-opens the tied pair as pending; then they re-roll to
+-- resolve. Watch the Nudge button reappear with the tied count.
+function roster.SimTie(kind)
+    kind = (kind == "low") and "low" or "high"
+    ns.ForceSandbox(60)
+    roster.SimStart(100)
+    ns.Print("|cffFFD700[Gamba]|r roster " .. kind .. "-tie demo: game (1-100), adding signups...")
+    C_Timer.After(1, function() roster.SimAdd("Beaglz") end)
+    C_Timer.After(2, function() roster.SimAdd("Soffty") end)
+    C_Timer.After(3, function() roster.SimAdd("Moistorcs") end)
+    C_Timer.After(4, function()
+        roster.SimClose()
+        ns.Print("|cffFFD700[Gamba]|r entries closed; rolling into a " .. kind .. " tie...")
+    end)
+    if kind == "high" then
+        C_Timer.After(5, function() roster.SimRoll("Moistorcs", 12) end)
+        C_Timer.After(6, function() roster.SimRoll("Beaglz", 87) end)
+        C_Timer.After(7, function() roster.SimRoll("Soffty", 87) end) -- ties the top -> re-opens both
+        C_Timer.After(9, function() roster.SimRoll("Beaglz", 55) end)
+        C_Timer.After(10, function() roster.SimRoll("Soffty", 91) end) -- resolves
+    else
+        C_Timer.After(5, function() roster.SimRoll("Beaglz", 87) end)
+        C_Timer.After(6, function() roster.SimRoll("Soffty", 12) end)
+        C_Timer.After(7, function() roster.SimRoll("Moistorcs", 12) end) -- ties the bottom -> re-opens both
+        C_Timer.After(9, function() roster.SimRoll("Soffty", 33) end)
+        C_Timer.After(10, function() roster.SimRoll("Moistorcs", 8) end) -- resolves
+    end
+    C_Timer.After(11, function()
+        ns.Print("|cffFFD700[Gamba]|r tie resolved. /cm roster status to inspect.")
     end)
 end
 

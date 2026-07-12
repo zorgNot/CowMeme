@@ -194,11 +194,11 @@ local helpDetails = {
         "Print the installed CowMeme version (from the .toc).",
     },
     roster = {
-        "|cffffff00/cm roster [status|demo|start|add|remove|close|roll|remind]|r",
+        "|cffffff00/cm roster [status|demo|simtie|start|add|remove|close|roll|remind]|r",
         "The gamba signup roster (built from CrossGambling's own broadcasts) and",
         "the roll-nudge button. /cm roster status lists who signed up but hasn't",
         "rolled. The rest are debug sims (need /cm debug on); /cm roster demo runs",
-        "the whole lifecycle so you can test the Nudge button without a live game.",
+        "the whole lifecycle, /cm roster simtie [high|low] exercises a tie breaker.",
         "/cm roster finish rolls out everyone still pending and closes the game.",
     },
     panel = {
@@ -286,6 +286,9 @@ commands["debug"] = function(arg)
         print("  |cffffff00/cp simgamba <chat line>|r      - feed a fake line to the gamba monitor")
         print("  |cffffff00/cp simroll <name> <n>|r        - feed a fake /roll to the top-roll tracker")
         print("  |cffffff00/cp simdemo [name]|r            - run the gamba demo, optionally targeting a player")
+        print("  |cffffff00/cp simtie [high|low]|r         - run the CopyPasta tie-breaker demo")
+        print("  |cffffff00/cp simnowin|r                  - run the no-winners (tombstone) demo")
+        print("  |cffffff00/cm roster simtie [high|low]|r  - run the GambaRoster tie-breaker demo")
     end
 end
 
@@ -359,6 +362,7 @@ commands["roster"] = function(arg)
         ns.gambaRoster.PrintStatus()
         print("  |cffffff00/cm roster status|r        - show signups and who is pending")
         print("  |cffffff00/cm roster demo|r          - run the full lifecycle sim")
+        print("  |cffffff00/cm roster simtie [high|low]|r - run the tie-breaker sim")
         print("  |cffffff00/cm roster start [wager]|r - sim a new game (default 100)")
         print("  |cffffff00/cm roster add <name>|r    - sim a signup")
         print("  |cffffff00/cm roster remove <name>|r - sim a withdrawal")
@@ -371,6 +375,8 @@ commands["roster"] = function(arg)
 
     if sub == "demo" then
         ns.gambaRoster.SimDemo()
+    elseif sub == "simtie" then
+        ns.gambaRoster.SimTie(rest:match("^(%S*)"):lower())
     elseif sub == "start" then
         ns.gambaRoster.SimStart(tonumber(rest))
         ns.Print("Roster sim: new game" .. (tonumber(rest) and (" (1-" .. tonumber(rest) .. ")") or " (1-100)") .. ".")
@@ -406,7 +412,9 @@ commands["v"] = commands["version"]
 
 commands["status"] = function()
     ns.Print("Status:")
-    local line = "  |cffFFD700CowMeme|r: enabled " .. OnOff(ns.db.enabled) .. ", debug " .. OnOff(ns.db.debug)
+    local getMeta = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
+    local version = (getMeta and getMeta(ADDON_NAME, "Version")) or "?"
+    local line = "  |cffFFD700CowMeme|r v" .. version .. ": enabled " .. OnOff(ns.db.enabled) .. ", debug " .. OnOff(ns.db.debug)
     if ns.db.debug then
         line = line .. ", sandbox " .. OnOff(ns.db.debugSandbox) .. ", verbose " .. OnOff(ns.db.debugVerbose)
     end

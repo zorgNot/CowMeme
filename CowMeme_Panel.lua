@@ -66,7 +66,7 @@ image:Hide()
 
 local text = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 text:SetJustifyH("CENTER")
-text:SetJustifyV("MIDDLE")
+text:SetJustifyV("TOP") -- anchor content to the top line so the eye stays put
 
 -- Smaller line pinned to the bottom, for secondary/flavor text
 local footer = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -179,6 +179,76 @@ function panel.SetNudgeEnabled(enabled)
     end
 end
 
+local clearTimer
+local footerTimer
+
+-- Pixel-art overlay. Block-element text glyphs don't render in the game font,
+-- so art is drawn as a grid of small square textures in the content region.
+-- Cells are pooled and reused across calls.
+local artTextures = {}
+local function HideArt()
+    for _, tex in ipairs(artTextures) do tex:Hide() end
+end
+
+-- Draw pixel art in the content region. rows is a list of equal-length strings;
+-- any character other than " " or "." is a filled pixel. Cells are sized to fit
+-- and centered. opts.duration auto-clears (via panel.Clear) like Display.
+function panel.ShowArt(rows, opts)
+    if not (ns.db.enabled and ns.db.panel.shown) then return end
+    opts = opts or {}
+    -- Art owns the whole content region: drop any text/image first.
+    image:Hide()
+    hasImage = false
+    text:SetText("")
+    footer:SetText("")
+
+    local nRows = #rows
+    local nCols = 0
+    for _, line in ipairs(rows) do nCols = math.max(nCols, #line) end
+    HideArt()
+    if nRows == 0 or nCols == 0 then return end
+
+    -- Content box: matches the text insets (5px sides, CONTENT_TOP down to 16px
+    -- above the bottom). Square cells, sized to fit, centered in the box.
+    local cw = frame:GetWidth() - 10
+    local ch = frame:GetHeight() + CONTENT_TOP - 16
+    local cell = math.floor(math.min(cw / nCols, ch / nRows))
+    if cell < 1 then cell = 1 end
+    local x0 = 5 + (cw - cell * nCols) / 2
+    local y0 = CONTENT_TOP - (ch - cell * nRows) / 2
+
+    local n = 0
+    for r = 1, nRows do
+        local line = rows[r]
+        for c = 1, #line do
+            local ch_ = line:sub(c, c)
+            if ch_ ~= " " and ch_ ~= "." then
+                n = n + 1
+                local tex = artTextures[n]
+                if not tex then
+                    tex = frame:CreateTexture(nil, "ARTWORK")
+                    artTextures[n] = tex
+                end
+                tex:SetColorTexture(0.92, 0.92, 0.85, 1) -- bone white
+                tex:SetSize(cell, cell)
+                tex:ClearAllPoints()
+                tex:SetPoint("TOPLEFT", frame, "TOPLEFT",
+                    x0 + (c - 1) * cell, y0 - (r - 1) * cell)
+                tex:Show()
+            end
+        end
+    end
+
+    frame:Show()
+    if clearTimer then clearTimer:Cancel(); clearTimer = nil end
+    if opts.duration then
+        clearTimer = C_Timer.NewTimer(opts.duration, function()
+            clearTimer = nil
+            panel.Clear()
+        end)
+    end
+end
+
 -- Show content on the panel. opts:
 --   text           - string to display
 --   image          - texture path (e.g. "Interface\\AddOns\\CowMeme\\images\\image")
@@ -186,11 +256,10 @@ end
 --   footerDuration - seconds until the footer alone clears (omit to persist)
 --   duration       - seconds until all content auto-clears (omit to persist)
 -- Respects the panel's shown setting: content is dropped while hidden.
-local clearTimer
-local footerTimer
 function panel.Display(opts)
     if not (ns.db.enabled and ns.db.panel.shown) then return end
     opts = opts or {}
+    HideArt() -- normal content replaces any pixel art
     hasImage = opts.image and true or false
     if opts.image then
         image:SetTexture(opts.image)
@@ -234,6 +303,7 @@ function panel.Clear()
     end
     image:Hide()
     hasImage = false
+    HideArt()
     LayoutText()
 end
 

@@ -162,11 +162,37 @@ local GAMBA_CHAT_EVENTS = {
 local GAMBA_START_MSG = "CrossGambling: A new game has been started!"
 -- The host announces this when entries close; only then do rolls count.
 local GAMBA_ROLL_MSG = "Entries have closed. Roll now!"
+-- The host announces this when a game ends with a zero spread (everyone tied):
+-- no "owes" line follows, so this is our cue to clear the pending game.
+local GAMBA_NO_WINNERS_MSG = "No winners this round!"
+
+-- A little skull for the no-winners case, drawn as pixel art (# = filled pixel,
+-- . = empty). panel.ShowArt renders it as a grid of textures because block
+-- glyphs don't render in the game font.
+local NO_WINNERS_ART = {
+    "....########....",
+    "..############..",
+    ".##############.",
+    "################",
+    "################",
+    "###...####...###",
+    "###...####...###",
+    "################",
+    "################",
+    "#######..#######",
+    ".##############.",
+    ".##.##.##.##.##.",
+    ".##.##.##.##.##.",
+    "..############..",
+    "...##########...",
+    "....########....",
+}
 
 local gambaFrame = CreateFrame("Frame", "CowMemeGambaFrame", UIParent)
 local activeHost = nil -- sender of the current game's start message, or nil
 local rollsOpen = false -- true once the host closes entries and calls to roll
 local gambaStake = nil -- max roll of the current game, parsed from the start line
+local gambaTie = nil -- { type = "High"/"Low", names = {...} } during a tie breaker
 
 -- Roll tracking for the active gamba game: first /roll per player counts
 local gambaRolls = {} -- { [playerName] = roll }
@@ -180,7 +206,36 @@ local function UpdateRollPanel(footer)
         if not botRoll or roll < botRoll then botName, botRoll = name, roll end
     end
     local lines = { "|cffFFD700Gamba|r" .. (gambaStake and (" (1-" .. gambaStake .. ")") or "") }
-    if not topRoll then
+
+    if gambaTie then
+        -- Tie breaker: keep the original Top/Bottom/Amount shape. The tied side
+        -- shows the shared roll in parentheses with the candidates listed below
+        -- it; the other side and the amount are the values locked in when the
+        -- tie was called, so they stay put while the candidates re-roll. Locked
+        -- lines are gold; candidate names stay white and gain their re-roll live.
+        local GOLD, END = "|cffFFD700", "|r"
+        local function candidates()
+            for _, n in ipairs(gambaTie.names) do
+                local r = gambaTie.rerolls and gambaTie.rerolls[n]
+                table.insert(lines, n .. (r and (" - " .. r) or ""))
+            end
+        end
+        table.insert(lines, "|cffff8800" .. gambaTie.type .. " tie breaker!" .. END)
+        if gambaTie.type == "Low" then
+            if gambaTie.topRoll then
+                table.insert(lines, GOLD .. "Top: " .. gambaTie.topName .. " - " .. gambaTie.topRoll .. END)
+            end
+            table.insert(lines, GOLD .. "Bottom (" .. (gambaTie.botRoll or "?") .. "):" .. END)
+            candidates()
+        else -- High (default)
+            table.insert(lines, GOLD .. "Top (" .. (gambaTie.topRoll or "?") .. "):" .. END)
+            candidates()
+            if gambaTie.botRoll then
+                table.insert(lines, GOLD .. "Bottom: " .. gambaTie.botName .. " - " .. gambaTie.botRoll .. END)
+            end
+        end
+        if gambaTie.amount then table.insert(lines, GOLD .. "Amount: " .. gambaTie.amount .. END) end
+    elseif not topRoll then
         table.insert(lines, rollsOpen and "Waiting for rolls..." or "Waiting for entries...")
     else
         table.insert(lines, "Top: " .. topName .. " - " .. topRoll)
@@ -203,6 +258,15 @@ local function OnSystemMsg(msg)
     if not name or low ~= "1" then return end
     if gambaStake and tonumber(high) ~= gambaStake then
         ns.DebugPrint("cp", "gamba: roll ignored (1-" .. high .. ", game is 1-" .. gambaStake .. "): " .. name)
+        return
+    end
+    -- Tie-breaker re-roll: a tied candidate rolling again. Record it against the
+    -- tie so it shows next to their name, without disturbing the locked round-1
+    -- Top/Bottom/Amount snapshot.
+    if gambaTie and gambaTie.candidateSet and gambaTie.candidateSet[name] then
+        gambaTie.rerolls[name] = tonumber(roll)
+        ns.DebugPrint("cp", "gamba: tiebreak re-roll " .. name .. " = " .. roll)
+        UpdateRollPanel()
         return
     end
     if gambaRolls[name] ~= nil then -- first roll counts; rerolls ignored
@@ -232,6 +296,7 @@ local function OnGambaChat(msg, sender)
         activeHost = sender
         rollsOpen = false
         gambaStake = nil -- unknown until the host's "Wager - Ng" line arrives
+        gambaTie = nil
         wipe(gambaRolls)
         ns.panel.SetHeader(nil) -- clear last game's owes echo
         ns.DebugPrint("cp", "gamba: new game started, host = " .. tostring(sender) ..
@@ -250,6 +315,21 @@ local function OnGambaChat(msg, sender)
         return
     end
 
+    -- No winners: the game tied to a zero spread and ends with no "owes" line,
+    -- so clear the pending game ourselves -- otherwise the state would hang
+    -- until the next game starts. Mark the occasion with a little tombstone.
+    if sender == activeHost and msg:find(GAMBA_NO_WINNERS_MSG, 1, true) then
+        ns.DebugPrint("cp", "gamba: no winners this round; clearing game")
+        activeHost = nil
+        rollsOpen = false
+        gambaStake = nil
+        gambaTie = nil
+        wipe(gambaRolls)
+        ns.panel.SetHeader("|cffff8800No winners this round!|r", 12)
+        ns.panel.ShowArt(NO_WINNERS_ART, { duration = 12 })
+        return
+    end
+
     -- The host announces the stake right after the start line, e.g.
     -- "Game Mode - Classic - Wager - 1,000g". Capture it so only rolls at that
     -- stake count; addCommas may comma-group the amount, so strip commas.
@@ -259,6 +339,46 @@ local function OnGambaChat(msg, sender)
             gambaStake = tonumber((wager:gsub(",", "")))
             ns.DebugPrint("cp", "gamba: stake set to 1-" .. tostring(gambaStake))
             UpdateRollPanel() -- show the stake in the panel title
+            return
+        end
+
+        -- A tie forces a re-roll: "High tie breaker! A, B and C /roll N now!".
+        -- The owed amount is locked here (the tying round's top minus bottom),
+        -- so snapshot Top/Bottom/Amount from the current rolls once; the tied
+        -- side keeps its shared value while the candidates re-roll to break it.
+        local tieType, nameStr = msg:match("^(%a+) tie breaker! (.-) /roll %d+ now!")
+        if tieType then
+            local names, candidateSet = {}, {}
+            -- String() formats names as "A", "A and B", or "A, B and C"
+            for n in (nameStr:gsub(" and ", ", ")):gmatch("[^,]+") do
+                n = strtrim(n)
+                if n ~= "" then
+                    table.insert(names, n)
+                    candidateSet[n] = true
+                end
+            end
+            if gambaTie then
+                -- nested tie: same locked amount, new candidates, fresh re-rolls
+                gambaTie.names = names
+                gambaTie.candidateSet = candidateSet
+                gambaTie.rerolls = {}
+            else
+                local topName, topRoll, botName, botRoll
+                for nm, roll in pairs(gambaRolls) do
+                    if not topRoll or roll > topRoll then topName, topRoll = nm, roll end
+                    if not botRoll or roll < botRoll then botName, botRoll = nm, roll end
+                end
+                gambaTie = {
+                    type = tieType, names = names, candidateSet = candidateSet,
+                    topName = topName, topRoll = topRoll,
+                    botName = botName, botRoll = botRoll,
+                    amount = (topRoll and botRoll) and (topRoll - botRoll) or nil,
+                    rerolls = {}, -- candidate name -> their re-roll, filled in live
+                }
+            end
+            ns.DebugPrint("cp", "gamba: " .. tieType .. " tie breaker among " ..
+                table.concat(names, ", "))
+            UpdateRollPanel()
             return
         end
     end
@@ -311,6 +431,7 @@ local function OnGambaChat(msg, sender)
     activeHost = nil
     rollsOpen = false
     gambaStake = nil
+    gambaTie = nil
 end
 
 gambaFrame:SetScript("OnEvent", function(self, event, msg, sender)
@@ -392,6 +513,8 @@ function cp.PrintCommands()
         print("  |cffffff00/cp simgamba <chat line>|r - (debug) feed a fake line to the gamba monitor")
         print("  |cffffff00/cp simroll <name> <n>|r   - (debug) feed a fake /roll to the top-roll tracker")
         print("  |cffffff00/cp simdemo [name]|r       - (debug) run the gamba demo, optionally targeting a player")
+        print("  |cffffff00/cp simtie [high|low]|r    - (debug) run the tie-breaker demo")
+        print("  |cffffff00/cp simnowin|r             - (debug) run the no-winners demo")
     end
 end
 
@@ -463,6 +586,64 @@ local function HandleSlash(input)
             ns.ForceSandbox(3)
             OnGambaChat(target .. " owes 84g to a very long name", "SimHost")
         end)
+        return
+    end
+
+    -- "/cp simtie [high|low]" runs a game that ties at the top (high) or bottom
+    -- (low), fires the host's tie-breaker line, then the re-rolls that resolve it.
+    if lowerInput == "simtie" or lowerInput:match("^simtie%s") then
+        if not (ns.db and ns.db.debug) then
+            ns.Print("|cffFFD700[CopyPasta]|r Debug mode required: /cm debug on")
+            return
+        end
+        local kind = strtrim(input:sub(#"simtie" + 1)):lower()
+        if kind ~= "low" then kind = "high" end
+        ns.Print("|cffFFD700[CopyPasta]|r sim: running " .. kind .. " tie-breaker demo (sandboxed, ~11s)...")
+        ns.ForceSandbox(12)
+        OnGambaChat(GAMBA_START_MSG .. " (1-100)", "SimHost")
+        OnGambaChat("Game Mode - Classic - Wager - 100g", "SimHost")
+        OnGambaChat(GAMBA_ROLL_MSG, "SimHost") -- close entries so rolls count
+        if kind == "high" then
+            C_Timer.After(1, function() OnSystemMsg("Moistorcs rolls 12 (1-100)") end)
+            C_Timer.After(2, function() OnSystemMsg("Beaglz rolls 87 (1-100)") end)
+            C_Timer.After(3, function() OnSystemMsg("Soffty rolls 87 (1-100)") end)
+            C_Timer.After(4, function() OnGambaChat("High tie breaker! Beaglz and Soffty /roll 100 now!", "SimHost") end)
+            C_Timer.After(6, function() OnSystemMsg("Beaglz rolls 55 (1-100)") end)
+            C_Timer.After(7, function() OnSystemMsg("Soffty rolls 91 (1-100)") end)
+            C_Timer.After(9, function()
+                ns.ForceSandbox(3)
+                OnGambaChat("Moistorcs owes Soffty 75g", "SimHost")
+            end)
+        else
+            C_Timer.After(1, function() OnSystemMsg("Beaglz rolls 87 (1-100)") end)
+            C_Timer.After(2, function() OnSystemMsg("Soffty rolls 12 (1-100)") end)
+            C_Timer.After(3, function() OnSystemMsg("Moistorcs rolls 12 (1-100)") end)
+            C_Timer.After(4, function() OnGambaChat("Low tie breaker! Soffty and Moistorcs /roll 100 now!", "SimHost") end)
+            C_Timer.After(6, function() OnSystemMsg("Soffty rolls 33 (1-100)") end)
+            C_Timer.After(7, function() OnSystemMsg("Moistorcs rolls 8 (1-100)") end)
+            C_Timer.After(9, function()
+                ns.ForceSandbox(3)
+                OnGambaChat("Moistorcs owes Beaglz 75g", "SimHost")
+            end)
+        end
+        return
+    end
+
+    -- "/cp simnowin" runs a game where everyone rolls the same, so the spread is
+    -- zero and the host calls "No winners this round!" -- exercises the game
+    -- clear and the tombstone art.
+    if lowerInput == "simnowin" then
+        if not (ns.db and ns.db.debug) then
+            ns.Print("|cffFFD700[CopyPasta]|r Debug mode required: /cm debug on")
+            return
+        end
+        ns.Print("|cffFFD700[CopyPasta]|r sim: running no-winners demo (~5s)...")
+        OnGambaChat(GAMBA_START_MSG .. " (1-100)", "SimHost")
+        OnGambaChat("Game Mode - Classic - Wager - 100g", "SimHost")
+        OnGambaChat(GAMBA_ROLL_MSG, "SimHost") -- close entries so rolls count
+        C_Timer.After(1, function() OnSystemMsg("Beaglz rolls 50 (1-100)") end)
+        C_Timer.After(2, function() OnSystemMsg("Soffty rolls 50 (1-100)") end)
+        C_Timer.After(4, function() OnGambaChat(GAMBA_NO_WINNERS_MSG, "SimHost") end)
         return
     end
 
