@@ -189,6 +189,10 @@ local helpDetails = {
         "Show current settings: addon enabled/debug, FnC tracking and batch mode,",
         "CopyPasta gamba announcing, sync leader, and panel state.",
     },
+    version = {
+        "|cffffff00/cm version|r (alias /cm v)",
+        "Print the installed CowMeme version (from the .toc).",
+    },
     roster = {
         "|cffffff00/cm roster [status|demo|start|add|remove|close|roll|remind]|r",
         "The gamba signup roster (built from CrossGambling's own broadcasts) and",
@@ -219,6 +223,7 @@ commands["help"] = function()
         print("  |cffffff00/cm roster|r      - (debug) gamba roster and roll-nudge sims")
     end
     print("  |cffffff00/cm status|r      - show current settings")
+    print("  |cffffff00/cm version|r     - show the addon version")
     print("  |cffffff00/fnc help|r       - Fast and Clean death tracker (see for details)")
     print("  |cffffff00/cp help|r        - CopyPasta (see for details)")
     commands.status()
@@ -392,6 +397,12 @@ commands["roster"] = function(arg)
         ns.Print("Unknown roster command \"" .. sub .. "\". Try /cm roster.")
     end
 end
+
+commands["version"] = function()
+    local getMeta = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
+    ns.Print("version " .. ((getMeta and getMeta(ADDON_NAME, "Version")) or "?"))
+end
+commands["v"] = commands["version"]
 
 commands["status"] = function()
     ns.Print("Status:")

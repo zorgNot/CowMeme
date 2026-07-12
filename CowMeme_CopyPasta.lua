@@ -102,10 +102,11 @@ local function LossPhrase(seed)
     return LOSS_PHRASES[(h % #LOSS_PHRASES) + 1]
 end
 
--- Local-only display: every client renders this itself; never leader-gated
+-- Local-only display: every client renders this itself; never leader-gated.
+-- entry may be nil for an unregistered ower; the addon icon is the fallback.
 local function ShowPastaOnPanel(key, entry, seed)
     ns.panel.Display({
-        image = entry.image or DEFAULT_PASTA_IMAGE,
+        image = (entry and entry.image) or DEFAULT_PASTA_IMAGE,
         text = "|cffFFD700" .. key .. "|r " .. LossPhrase(seed),
         duration = PASTA_PANEL_DURATION,
     })
@@ -230,8 +231,7 @@ local function OnGambaChat(msg, sender)
     if msg:find(GAMBA_START_MSG, 1, true) then
         activeHost = sender
         rollsOpen = false
-        -- Capture the stake, e.g. "(1-100)"; nil (unparsed) accepts any 1-N roll
-        gambaStake = tonumber(msg:match("%(1%-(%d+)%)"))
+        gambaStake = nil -- unknown until the host's "Wager - Ng" line arrives
         wipe(gambaRolls)
         ns.panel.SetHeader(nil) -- clear last game's owes echo
         ns.DebugPrint("cp", "gamba: new game started, host = " .. tostring(sender) ..
@@ -248,6 +248,19 @@ local function OnGambaChat(msg, sender)
             UpdateRollPanel() -- flip the panel to "Waiting for rolls..."
         end
         return
+    end
+
+    -- The host announces the stake right after the start line, e.g.
+    -- "Game Mode - Classic - Wager - 1,000g". Capture it so only rolls at that
+    -- stake count; addCommas may comma-group the amount, so strip commas.
+    if sender == activeHost then
+        local wager = msg:match("Wager %- ([%d,]+)g")
+        if wager then
+            gambaStake = tonumber((wager:gsub(",", "")))
+            ns.DebugPrint("cp", "gamba: stake set to 1-" .. tostring(gambaStake))
+            UpdateRollPanel() -- show the stake in the panel title
+            return
+        end
     end
 
     local name = msg:match("(%S+) owes ")
@@ -272,21 +285,26 @@ local function OnGambaChat(msg, sender)
     -- Strip realm suffix if present (Name-Realm)
     name = name:match("^([^%-]+)") or name
     local entry, key = Resolve(name)
-    if not entry or #entry.lines == 0 then
-        ns.DebugPrint("cp", "gamba: matched \"" .. name .. "\" but no registered player")
-        return
-    end
 
-    ns.DebugPrint("cp", "gamba: \"" .. name .. "\" resolved to " .. key ..
-        ", firing pasta; game ends")
-    -- Local display first, on every client, independent of announcing
-    ShowPastaOnPanel(key, entry, msg)
-    -- Chat only if this client is willing; the election among willing
-    -- announcers ensures exactly one speaks
-    if ns.db.copypasta.gambaMonitor then
-        ns.Announce(BuildMessage(entry.lines[math.random(1, #entry.lines)]), "G")
+    -- Local display first, on every client, independent of announcing. Show a
+    -- loss card whether or not the ower is registered: a registered player uses
+    -- their key + optional image, an unregistered ower falls back to their raw
+    -- name and the default image. Either way this gives the card a duration so
+    -- the panel self-clears instead of sitting on the roll tracker.
+    ShowPastaOnPanel(key or name, entry, msg)
+
+    -- Chat only when there's a registered pasta to send and this client is
+    -- willing; the election among willing announcers ensures exactly one speaks.
+    if entry and #entry.lines > 0 then
+        ns.DebugPrint("cp", "gamba: \"" .. name .. "\" resolved to " .. key ..
+            ", firing pasta; game ends")
+        if ns.db.copypasta.gambaMonitor then
+            ns.Announce(BuildMessage(entry.lines[math.random(1, #entry.lines)]), "G")
+        else
+            ns.DebugPrint("cp", "gamba: announcing off locally; pasta not sent")
+        end
     else
-        ns.DebugPrint("cp", "gamba: announcing off locally; pasta not sent")
+        ns.DebugPrint("cp", "gamba: \"" .. name .. "\" not registered; default card only, game ends")
     end
 
     -- Game over: forget the host until the next game starts

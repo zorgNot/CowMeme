@@ -138,7 +138,11 @@ local function OnAddonMsg(prefix, msg, channel)
             ns.DebugPrint("roster", "signup: " .. name .. " (" .. #roster.Pending() .. " total)")
         end
     elseif event == "Remove_Player" then
-        players[Strip(arg)] = nil
+        local name = Strip(arg)
+        if name and players[name] then
+            players[name] = nil
+            ns.DebugPrint("roster", "withdrew: " .. name .. " (" .. #roster.Pending() .. " total)")
+        end
     elseif event == "Disable_Join" then
         rolling = true
         ns.DebugPrint("roster", "entries closed; roll phase, " .. #roster.Pending() .. " signed up")

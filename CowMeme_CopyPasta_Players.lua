@@ -86,7 +86,7 @@ ns.copypasta.Register("Shaeza", {
 })
 
 ns.copypasta.Register("Bob", {
-    chars = { "Bagelbob", "Bagelbobert", "Bagelbobity", "Bagelbuddy", "Bagelbobby", "Bagelshopbob", "Bagelshopbob", "Bagelbobbert" },
+    chars = { "Bagelbob", "Bagelbobert", "Bagelbobbity", "Bagelbuddy", "Bagelbobby", "Bagelshopbob", "Bagelshopbob", "Bagelbobbert" },
     image = "Interface\\AddOns\\CowMeme\\images\\Bob",
     lines = {
         "Bagelbob sees threat as a suggested mechanic. Tank got a 10 second lead, sunders up, perfect pull... doesn't matter. Bro is already halfway to Valhalla because stopping DPS is apparently against his religion.",
