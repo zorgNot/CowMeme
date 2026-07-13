@@ -12,6 +12,7 @@ panel.name = "CowMeme"
 -- is preserved but currently has no effect.
 local checkboxes = {}
 local checkCount = 0
+local extraRefreshers = {} -- non-checkbox widgets (sliders, ...) register here
 
 local function RefreshAll()
     for _, cb in ipairs(checkboxes) do
@@ -23,6 +24,9 @@ local function RefreshAll()
             cb:Disable()
             cb.labelFS:SetFontObject(GameFontDisable)
         end
+    end
+    for _, refresh in ipairs(extraRefreshers) do
+        refresh()
     end
 end
 
@@ -96,6 +100,43 @@ AddCheckbox("Enable CowMeme",
         ns.ApplyAllStates()
     end)
 
+local soundCB = AddCheckbox("Play sound effects",
+    "Master toggle for CowMeme's sound effects (e.g. the First Blood sound when the first death of a Fast and Clean run is recorded). Heard even if game sound effects are muted.",
+    function() return ns.db.sound end,
+    function(v) ns.db.sound = v end,
+    AddonEnabled)
+
+-- Volume slider, on the same row as the sound checkbox. Releasing the handle
+-- plays a test clip at the new volume.
+local volumeSlider = CreateFrame("Slider", "CowMemeOptionsVolumeSlider", panel, "OptionsSliderTemplate")
+volumeSlider:SetPoint("LEFT", soundCB.labelFS, "RIGHT", 30, 0)
+volumeSlider:SetSize(140, 16)
+volumeSlider:SetMinMaxValues(0, 1)
+volumeSlider:SetValueStep(0.05)
+volumeSlider:SetObeyStepOnDrag(true)
+_G[volumeSlider:GetName() .. "Low"]:SetText("0%")
+_G[volumeSlider:GetName() .. "High"]:SetText("100%")
+local volumeLabel = _G[volumeSlider:GetName() .. "Text"]
+volumeSlider:SetScript("OnValueChanged", function(self, value)
+    ns.db.soundVolume = value
+    volumeLabel:SetText(string.format("Volume: %.0f%%", value * 100))
+end)
+volumeSlider:SetScript("OnMouseUp", function()
+    ns.PlaySound("cm_firstblood.ogg") -- instant feedback at the new volume
+end)
+AddTooltip(volumeSlider, "Sound volume",
+    "Volume for CowMeme's sound effects. At 100% clips play on the Master channel; below that they play through the rarely-used Dialog channel at this volume. 0% silences them. Release the handle to hear a test clip.")
+table.insert(extraRefreshers, function()
+    volumeSlider:SetValue(ns.db.soundVolume or 1)
+    if ns.db.enabled and ns.db.sound then
+        volumeSlider:Enable()
+        volumeLabel:SetFontObject(GameFontHighlightSmall)
+    else
+        volumeSlider:Disable()
+        volumeLabel:SetFontObject(GameFontDisableSmall)
+    end
+end)
+
 -- ===== Fast and Clean =====
 AddHeader("Fast and Clean")
 
@@ -103,6 +144,12 @@ AddCheckbox("Batch milestone announcements",
     "Collect deaths that hit the same milestone within 1.5 seconds and announce them together (e.g. \"A and B ARE ON A DYING SPREE!\"). Always on while in a raid, regardless of this setting.",
     function() return ns.db.fnc.batch end,
     function(v) ns.db.fnc.batch = v end,
+    AddonEnabled)
+
+AddCheckbox("Allow group FnC reset",
+    "Let your group's leader or assist (or the addon's priority characters) start a fresh Fast and Clean run for everyone at once with /fnc reset group, so death counts stay aligned. You always get a chat message naming who reset you.",
+    function() return ns.db.fnc.allowGroupReset end,
+    function(v) ns.db.fnc.allowGroupReset = v end,
     AddonEnabled)
 
 -- ===== CopyPasta =====
@@ -167,12 +214,15 @@ y = y - 10
 -- Reset settings to defaults, preserving run state (death counts, panel position)
 local function ResetToDefaults()
     ns.db.enabled      = ns.defaults.enabled
+    ns.db.sound        = ns.defaults.sound
+    ns.db.soundVolume  = ns.defaults.soundVolume
     ns.db.debug        = ns.defaults.debug
     ns.db.debugSandbox = ns.defaults.debugSandbox
     ns.db.debugVerbose = ns.defaults.debugVerbose
     ns.db.debugFnc     = ns.defaults.debugFnc
     ns.db.debugCp      = ns.defaults.debugCp
     ns.db.fnc.batch    = ns.defaults.fnc.batch
+    ns.db.fnc.allowGroupReset = ns.defaults.fnc.allowGroupReset
     ns.db.copypasta.gambaMonitor = ns.defaults.copypasta.gambaMonitor
     ns.db.panel.shown  = ns.defaults.panel.shown
     ns.db.panel.locked = ns.defaults.panel.locked

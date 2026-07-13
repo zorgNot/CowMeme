@@ -6,7 +6,7 @@ param(
 )
 
 $source = $PSScriptRoot
-$extensions = @("*.lua", "*.toc", "*.xml", "*.tga", "*.blp")
+$extensions = @("*.lua", "*.toc", "*.xml", "*.tga", "*.blp", "*.ogg")
 
 if (-not (Test-Path $WowPath)) {
     Write-Host "Destination not found: $WowPath" -ForegroundColor Yellow

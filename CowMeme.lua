@@ -3,6 +3,8 @@ local ADDON_NAME, ns = ...
 -- Default settings — merged with SavedVariables on load
 ns.defaults = {
     enabled = true,
+    sound   = true,       -- master toggle for addon sound effects
+    soundVolume = 1,      -- 0..1 volume for addon sound effects
     debug   = false,
     debugSandbox = false, -- route announcements to local print instead of chat
     debugVerbose = false, -- extra-noisy tracing (per damage event)
@@ -54,6 +56,45 @@ end
 
 function ns.Print(msg)
     print("|cff00ff00CowMeme|r: " .. tostring(msg))
+end
+
+-- Master sound. Plays a sound bundled with the addon, gated by the master
+-- sound toggle (and the addon enable). `file` is a name in the sounds\ folder
+-- ("cm_firstblood.ogg") or a full "Interface\\AddOns\\..." path. Returns
+-- true if it started playing.
+--
+-- Volume: PlaySoundFile has no per-sound volume; sounds only scale by channel
+-- volume. At full volume clips play on Master (heard even with game SFX
+-- muted). Below full, they ride the rarely-used Dialog channel with its
+-- volume CVar pinned to the slider value while the clip plays, restored a few
+-- seconds later. Overlapping clips extend the restore window; the saved user
+-- value is only captured while no restore is pending, so our own pin is never
+-- mistaken for the user's setting.
+local SOUND_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\sounds\\"
+local volumeRestoreTimer, savedDialogVolume
+function ns.PlaySound(file)
+    if not (ns.db and ns.db.enabled and ns.db.sound) then return false end
+    if not file or file == "" then return false end
+    local volume = ns.db.soundVolume or 1
+    if volume <= 0 then return false end
+    local path = file:find("\\", 1, true) and file or (SOUND_PATH .. file)
+
+    if volume >= 1 then
+        return PlaySoundFile(path, "Master") and true or false
+    end
+
+    if volumeRestoreTimer then
+        volumeRestoreTimer:Cancel()
+    else
+        savedDialogVolume = tonumber(GetCVar("Sound_DialogVolume")) or 1
+    end
+    SetCVar("Sound_DialogVolume", volume)
+    local willPlay = PlaySoundFile(path, "Dialog")
+    volumeRestoreTimer = C_Timer.NewTimer(4, function()
+        volumeRestoreTimer = nil
+        SetCVar("Sound_DialogVolume", savedDialogVolume)
+    end)
+    return willPlay and true or false
 end
 
 -- True when tracing for a module scope ("fnc" / "cp") should print
@@ -283,6 +324,9 @@ commands["debug"] = function(arg)
         print("  |cffffff00/fnc simdamage <name> <cause>|r - record fake damage against <name>")
         print("  |cffffff00/fnc simdeath <name>|r          - simulate a death (pair with simdamage)")
         print("  |cffffff00/fnc simbatch <milestone> <n>|r - simulate n deaths hitting a milestone")
+        print("  |cffffff00/fnc simsound [milestone]|r     - play a sound via a fake chat line (no arg = first blood)")
+        print("  |cffffff00/fnc simreset|r                 - simulate receiving a group FnC reset")
+        print("  |cffffff00/fnc longsim|r                  - 30 deaths / 3 characters / 30s, topping out the milestones")
         print("  |cffffff00/cp simgamba <chat line>|r      - feed a fake line to the gamba monitor")
         print("  |cffffff00/cp simroll <name> <n>|r        - feed a fake /roll to the top-roll tracker")
         print("  |cffffff00/cp simdemo [name]|r            - run the gamba demo, optionally targeting a player")
@@ -414,7 +458,7 @@ commands["status"] = function()
     ns.Print("Status:")
     local getMeta = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
     local version = (getMeta and getMeta(ADDON_NAME, "Version")) or "?"
-    local line = "  |cffFFD700CowMeme|r v" .. version .. ": enabled " .. OnOff(ns.db.enabled) .. ", debug " .. OnOff(ns.db.debug)
+    local line = "  |cffFFD700CowMeme|r v" .. version .. ": enabled " .. OnOff(ns.db.enabled) .. ", sound " .. OnOff(ns.db.sound) .. ", debug " .. OnOff(ns.db.debug)
     if ns.db.debug then
         line = line .. ", sandbox " .. OnOff(ns.db.debugSandbox) .. ", verbose " .. OnOff(ns.db.debugVerbose)
     end

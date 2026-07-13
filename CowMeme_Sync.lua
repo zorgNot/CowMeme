@@ -15,6 +15,12 @@ local PRIORITY = {
     Offalfan = 3,
 }
 
+-- True if the (realm-stripped) name is one of the priority characters.
+-- Exposed for authority checks elsewhere (e.g. the FnC group reset).
+function sync.IsPriority(name)
+    return name ~= nil and PRIORITY[name] ~= nil
+end
+
 -- Peers heard per scope: { [scope] = { [name] = { time, version, flags } } }.
 -- Scoped so a guild-wide beacon can't win an election for raid output.
 local roster = {}

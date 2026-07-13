@@ -7,10 +7,26 @@ local fnc = ns.fnc
 ns.defaults.fnc = {
     active = false,
     batch  = false, -- batch milestone announcements (always on in raid)
+    allowGroupReset = true, -- honor /fnc reset group from the group's authority
     deaths = {}, -- { [playerName] = count }
 }
 
 local fncFrame = CreateFrame("Frame", "CowMemeFnCFrame", UIParent)
+
+-- Chat watcher: plays sounds off announced FnC lines and receives group-reset
+-- comms. Active whenever the addon is enabled -- deliberately NOT gated on
+-- fnc.active, so guildies who never start a run still hear the sounds and
+-- honor group resets.
+local chatFrame = CreateFrame("Frame", "CowMemeFnCChatFrame", UIParent)
+-- Everywhere ns.Announce can land (sounds mirror whatever chat shows)
+local FNC_CHAT_EVENTS = {
+    "CHAT_MSG_INSTANCE_CHAT",
+    "CHAT_MSG_RAID",
+    "CHAT_MSG_RAID_LEADER",
+    "CHAT_MSG_PARTY",
+    "CHAT_MSG_PARTY_LEADER",
+    "CHAT_MSG_GUILD",
+}
 
 -- Register/unregister death tracking based on the global addon enable flag and
 -- whether a run is active. Does not change ns.db.fnc.active.
@@ -20,15 +36,29 @@ function fnc.ApplyState()
     else
         fncFrame:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
     end
+    if ns.db.enabled then
+        for _, event in ipairs(FNC_CHAT_EVENTS) do
+            chatFrame:RegisterEvent(event)
+        end
+        chatFrame:RegisterEvent("CHAT_MSG_ADDON")
+    else
+        chatFrame:UnregisterAllEvents()
+    end
+end
+
+-- Fresh run: clear deaths and start tracking. Callers print their own line
+-- (manual /fnc new vs. a group reset name different actors).
+local function BeginRun()
+    ns.db.fnc.active = true
+    ns.db.fnc.deaths = {}
+    fnc.ApplyState()
+    ns.sync.Ping() -- advertise the F flag promptly
 end
 
 -- Start a new FnC run
 function fnc.New()
-    ns.db.fnc.active = true
-    ns.db.fnc.deaths = {}
+    BeginRun()
     ns.Print("|cffFFD700[Fast and Clean]|r Run started. Good luck!")
-    fnc.ApplyState()
-    ns.sync.Ping() -- advertise the F flag promptly
 end
 
 -- Resume tracking without clearing deaths
@@ -133,6 +163,111 @@ local function GetGroupMembers()
     return members
 end
 
+local function Strip(name)
+    return name and (name:match("^([^%-]+)") or name)
+end
+
+-- Sounds mirror chat: when an announced FnC line lands in a channel we can
+-- see, play the matching sound. Every client that sees the text hears the
+-- sound (the announcer too, via their own echoed message), so audio always
+-- agrees with what the group is reading -- no cross-client state needed.
+-- The {rt8} suffix requirement filters casual hand-typed spoofs.
+local SOUND_LINES = {
+    { match = "^First blood! ", sound = "cm_firstblood.ogg" },
+    -- Milestone entries are appended below, derived from MILESTONES so a
+    -- reworded milestone can't silently break its sound.
+}
+
+-- Returns true if a line matched and its sound actually played
+local function OnFncChat(msg)
+    for _, entry in ipairs(SOUND_LINES) do
+        if msg:find(entry.match) and msg:find("{rt8}", 1, true) then
+            return ns.PlaySound(entry.sound)
+        end
+    end
+    return false
+end
+
+-- Group leader or assist counts as rank authority
+local function IsGroupRank(name)
+    local unit = GetGroupMembers()[name]
+    if not unit then return false end
+    return UnitIsGroupLeader(unit) or UnitIsGroupAssistant(unit)
+end
+
+-- Authority: who may drive group-wide FnC actions (currently the group
+-- reset). An ordered list of predicates over a realm-stripped sender name,
+-- so new sources slot in cleanly -- e.g. a future /fnc lead command would
+-- insert a "claimed leader" check at the top, decoupling authority from
+-- raid rank entirely.
+local AUTHORITY_CHECKS = {
+    -- function(name) return claimedLeader == name end, -- future /fnc lead
+    ns.sync.IsPriority, -- the addon's priority characters
+    IsGroupRank,        -- group leader or assist
+}
+
+local function IsAuthorized(name)
+    for _, check in ipairs(AUTHORITY_CHECKS) do
+        if check(name) then return true end
+    end
+    return false
+end
+
+-- Receiving a group reset: a remote /fnc new, gated on the local opt-in and
+-- the sender's authority. sim=true (from /fnc simreset) bypasses the
+-- authority lookup, which can't pass for a fabricated sender.
+local function OnGroupReset(sender, sim)
+    sender = Strip(sender)
+    if not sender or sender == UnitName("player") then return end -- own echo
+    if not ns.db.fnc.allowGroupReset then
+        ns.Print("|cffFFD700[FnC]|r Group reset from " .. sender .. " ignored (opt-in is off).")
+        return
+    end
+    if not sim and not IsAuthorized(sender) then
+        ns.DebugPrint("fnc", "group reset from " .. sender .. " ignored (not leader/assist/priority)")
+        return
+    end
+    BeginRun()
+    ns.Print("|cffFFD700[Fast and Clean]|r Run reset by " .. sender ..
+        " -- fresh run started. (Opt out in /cm options)")
+end
+
+-- Group reset, sender side: reset locally, then ask the group to do the
+-- same. The comm rides the group channel only (never GUILD), which is what
+-- scopes it to this raid/party.
+local GROUP_CHANNELS = { INSTANCE_CHAT = true, RAID = true, PARTY = true }
+
+function fnc.GroupReset()
+    BeginRun()
+    ns.Print("|cffFFD700[Fast and Clean]|r Fresh run started (group reset).")
+    local channel = ns.CanonicalChannel()
+    if not (channel and GROUP_CHANNELS[channel]) then
+        ns.Print("|cffFFD700[FnC]|r Not in a group; the reset was local only.")
+        return
+    end
+    if not IsAuthorized(Strip(UnitName("player"))) then
+        ns.Print("|cffFFD700[FnC]|r You are not the group leader/assist, so members will ignore the reset; it was applied locally only.")
+        return
+    end
+    if ns.SandboxActive() then
+        ns.Print("|cff00ccff[SANDBOX -> " .. channel .. "]|r FNC_RESET")
+        return
+    end
+    C_ChatInfo.SendAddonMessage("CowMeme", "FNC_RESET", channel)
+end
+
+chatFrame:SetScript("OnEvent", function(self, event, ...)
+    if event == "CHAT_MSG_ADDON" then
+        local prefix, msg, _, sender = ...
+        if prefix == "CowMeme" and msg == "FNC_RESET" then
+            OnGroupReset(sender)
+        end
+    else
+        local msg = ...
+        OnFncChat(msg)
+    end
+end)
+
 -- Per-character death milestone announcements.
 -- %s is the subject including verb, e.g. "Bob is" or "Bob and Alice are".
 local MILESTONES = {
@@ -144,6 +279,36 @@ local MILESTONES = {
     [14] = "%s ON A MONSTER FLOOR STREAK!",
     [15] = "%s FLOORMAXXING!",
 }
+
+-- Milestone sounds, keyed by the same death counts as MILESTONES above
+local MILESTONE_SOUNDS = {
+    [3]  = "cm_killingspree.ogg",
+    [5]  = "cm_dominating.ogg",
+    [7]  = "cm_megakill.ogg",
+    [10] = "cm_unstoppable.ogg",
+    [12] = "cm_whickedsick.ogg",
+    [14] = "cm_monsterkill.ogg",
+    [15] = "cm_godlike.ogg",
+}
+
+-- Wire each milestone's sound into the chat watcher: the match string is the
+-- announced phrase, i.e. the format with its "%s " subject slot stripped
+-- (e.g. "%s ON A DYING SPREE!" -> "ON A DYING SPREE!").
+for count, sound in pairs(MILESTONE_SOUNDS) do
+    if MILESTONES[count] then
+        table.insert(SOUND_LINES, { match = MILESTONES[count]:gsub("%%s%s*", ""), sound = sound })
+    end
+end
+
+-- FnC's announce wrapper: live lines reach the sound watcher as real chat
+-- echoes, but in sandbox the line never lands in chat -- so feed the watcher
+-- directly. Pretend chat gets pretend echoes, keeping sims audible.
+local function AnnounceFnc(msg)
+    ns.Announce(msg, "F")
+    if ns.SandboxActive() then
+        OnFncChat(msg)
+    end
+end
 
 -- entries: { { name = "Bob", cause = "slain by ... (fire)" }, ... }
 -- "Bob, cause is" / "Bob, cause and Alice, cause are"
@@ -160,7 +325,7 @@ end
 
 local function AnnounceMilestone(entries, count)
     local msg = string.format(MILESTONES[count], FormatSubject(entries))
-    ns.Announce(msg .. " " .. count .. " {rt8}", "F")
+    AnnounceFnc(msg .. " " .. count .. " {rt8}")
 end
 
 -- Cause-of-death tracking: UNIT_DIED carries no killing blow, so remember
@@ -303,7 +468,9 @@ local function AnnounceDeath(name, count, cause)
         total = total + c
     end
     if total == 1 then
-        ns.Announce("First blood! " .. name .. ", " .. cause .. " BloodTrail  " .. count .. " {rt8}", "F")
+        -- Sound plays via the chat watcher when the line lands (own echo
+        -- included), so audio stays in sync with what the group sees.
+        AnnounceFnc("First blood! " .. name .. ", " .. cause .. " BloodTrail  " .. count .. " {rt8}")
         return
     end
 
@@ -375,6 +542,9 @@ function fnc.Init()
     if not ns.db.fnc then
         ns.db.fnc = { active = false, batch = false, deaths = {} }
     end
+    if ns.db.fnc.allowGroupReset == nil then
+        ns.db.fnc.allowGroupReset = true -- setting added after early saves
+    end
     fnc.ApplyState()
     if ns.db.enabled and ns.db.fnc.active then
         ns.Print("|cffFFD700[Fast and Clean]|r Resuming active run.")
@@ -413,7 +583,13 @@ end
 
 fncCommands["new"] = function() fnc.New() end
 fncCommands["start"] = function() fnc.Start() end
-fncCommands["reset"] = function() fnc.Reset() end
+fncCommands["reset"] = function(arg)
+    if arg and arg:lower():match("^group") then
+        fnc.GroupReset()
+    else
+        fnc.Reset()
+    end
+end
 fncCommands["stop"] = function() fnc.Stop() end
 fncCommands["report"] = function(arg) fnc.Report(arg) end
 
@@ -447,6 +623,48 @@ fncCommands["simdeath"] = function(arg)
     OnUnitDied("Sim-" .. name, name, COMBATLOG_OBJECT_TYPE_PLAYER, true)
 end
 
+fncCommands["simsound"] = function(arg)
+    if not RequireDebug() then return end
+    -- Feed a constructed announce line to the chat watcher; sound is local,
+    -- so this is audible without touching chat. No arg = first blood; a
+    -- milestone number plays that milestone's sound.
+    local line, label
+    local n = tonumber(arg)
+    if arg and not n then
+        arg = nil -- non-numeric arg: fall through to first blood
+    end
+    if n then
+        if not (MILESTONES[n] and MILESTONE_SOUNDS[n]) then
+            local keys = {}
+            for k in pairs(MILESTONE_SOUNDS) do table.insert(keys, k) end
+            table.sort(keys)
+            ns.Print("|cffFFD700[FnC]|r Usage: /fnc simsound [milestone]  (milestones: "
+                .. table.concat(keys, " ") .. "; no arg = first blood)")
+            return
+        end
+        line = string.format(MILESTONES[n], "Simmy, slain by simulation (physical) is") .. " " .. n .. " {rt8}"
+        label = "milestone " .. n .. " (" .. MILESTONE_SOUNDS[n] .. ")"
+    else
+        line = "First blood! Simmy, slain by simulation (physical) BloodTrail  1 {rt8}"
+        label = "first blood (cm_firstblood.ogg)"
+    end
+    if OnFncChat(line) then
+        ns.Print("|cffFFD700[FnC]|r sim: " .. label .. " -- sound played.")
+    else
+        ns.Print("|cffFFD700[FnC]|r sim: no sound played (is \"Play sound effects\" on and the addon enabled?).")
+    end
+end
+
+fncCommands["simreset"] = function()
+    if not RequireDebug() then return end
+    ns.ForceSandbox(3)
+    ns.Print("|cffFFD700[FnC]|r sim: receiving a group reset from SimLeader...")
+    OnGroupReset("SimLeader", true)
+    if not ns.db.fnc.allowGroupReset then
+        ns.Print("|cffFFD700[FnC]|r (Toggle \"Allow group FnC reset\" in /cm options to see the accept path.)")
+    end
+end
+
 fncCommands["simbatch"] = function(arg)
     if not RequireDebug() then return end
     local milestone, n = (arg or ""):match("^(%d+)%s+(%d+)")
@@ -465,12 +683,60 @@ fncCommands["simbatch"] = function(arg)
     end
 end
 
+-- Full 30-second tour: 30 deaths across 3 characters through the real death
+-- pipeline (causes, counts, first blood, milestone announces + sounds).
+-- Simmy eats 15 -- every milestone through the top -- the others split the
+-- rest. Causes avoid falling on purpose: the falling dedup would swallow
+-- follow-up deaths within its 16s window.
+fncCommands["longsim"] = function()
+    if not RequireDebug() then return end
+    if next(ns.db.fnc.deaths) then
+        ns.Print("|cffFFD700[FnC]|r Note: existing deaths recorded, so first blood won't fire. /fnc reset first for the full tour.")
+    end
+    ns.Print("|cffFFD700[FnC]|r longsim: 30 deaths / 3 characters / ~30s (sandboxed)...")
+
+    -- Round-robin so the streaks interleave; once the others run dry, Simmy's
+    -- solo tail run hits 10/12/14/15 back to back.
+    local remaining = { Simmy = 15, Bopsy = 8, Floora = 7 }
+    local order = { "Simmy", "Bopsy", "Floora" }
+    local schedule = {}
+    while #schedule < 30 do
+        for _, name in ipairs(order) do
+            if remaining[name] > 0 then
+                remaining[name] = remaining[name] - 1
+                table.insert(schedule, name)
+            end
+        end
+    end
+
+    local causes = {
+        "slain by Gruul's Shatter (physical)",
+        "slain by High King Maulgar's melee (physical)",
+        "killed by Blast Wave (fire)",
+        "drowned",
+        "slain by Shadow Bolt (shadow)",
+    }
+
+    for i, name in ipairs(schedule) do
+        C_Timer.After(i, function()
+            ns.ForceSandbox(5) -- rolling window covers batched announces too
+            local cause = causes[(i - 1) % #causes + 1]
+            RecordDamage("Sim-" .. name, cause, name)
+            OnUnitDied("Sim-" .. name, name, COMBATLOG_OBJECT_TYPE_PLAYER, true)
+        end)
+    end
+    C_Timer.After(#schedule + 2, function()
+        ns.Print("|cffFFD700[FnC]|r longsim complete -- /fnc reset clears the sim deaths.")
+    end)
+end
+
 -- Printed by /fnc help and pulled into the /cm main menu
 function fnc.PrintCommands()
     ns.Print("|cffFFD700[Fast and Clean]|r commands:")
     print("  |cffffff00/fnc new|r     - start a new run (clears deaths)")
     print("  |cffffff00/fnc start|r   - resume tracking without resetting")
     print("  |cffffff00/fnc reset|r   - reset death counts")
+    print("  |cffffff00/fnc reset group|r - fresh run for the whole group (leader/assist only)")
     print("  |cffffff00/fnc report|r    - announce to party/raid/say (auto)")
     print("  |cffffff00/fnc report g|r  - announce to guild chat")
     print("  |cffffff00/fnc report 1|r  - announce to channel number")
@@ -482,6 +748,9 @@ function fnc.PrintCommands()
         print("  |cffffff00/fnc simdamage <name> <cause>|r - (debug) record fake damage")
         print("  |cffffff00/fnc simdeath <name>|r          - (debug) simulate a death")
         print("  |cffffff00/fnc simbatch <milestone> <n>|r - (debug) simulate batched milestones")
+        print("  |cffffff00/fnc simsound [milestone]|r     - (debug) play a sound via a fake line (no arg = first blood)")
+        print("  |cffffff00/fnc simreset|r                 - (debug) simulate receiving a group reset")
+        print("  |cffffff00/fnc longsim|r                  - (debug) 30 deaths / 3 characters / 30s, topping out the milestones")
     end
 end
 
