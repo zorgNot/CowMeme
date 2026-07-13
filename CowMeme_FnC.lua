@@ -601,6 +601,30 @@ local function RequireDebug()
     return false
 end
 
+-- Strip a trailing "nobox" token from a sim's argument. With it, the sim
+-- runs live -- announcements go to real chat so other clients' watchers
+-- (sounds, etc.) can be tested. Returns the remaining arg and the flag.
+local function StripNobox(arg)
+    if not arg then return nil, false end
+    local stripped, n = arg:gsub("%s*nobox%s*$", "")
+    if n > 0 then
+        return (stripped ~= "" and stripped or nil), true
+    end
+    return arg, false
+end
+
+-- Sandbox a sim for `seconds` unless it runs nobox; nobox prints what to
+-- expect instead. The debugSandbox setting still wins over nobox.
+local function SimSandbox(nobox, seconds)
+    if not nobox then
+        ns.ForceSandbox(seconds)
+    elseif ns.SandboxActive() then
+        ns.Print("|cffFFD700[FnC]|r nobox: the sandbox setting is still on, so announcements will print locally (/cm debug sandbox).")
+    else
+        ns.Print("|cffFFD700[FnC]|r |cffff8800LIVE|r sim: announcements go to real chat.")
+    end
+end
+
 fncCommands["simdamage"] = function(arg)
     if not RequireDebug() then return end
     local name, cause = (arg or ""):match("^(%S+)%s+(.+)")
@@ -614,12 +638,13 @@ end
 
 fncCommands["simdeath"] = function(arg)
     if not RequireDebug() then return end
-    local name = arg and strtrim(arg) or ""
+    local name, nobox = StripNobox(arg)
+    name = name and strtrim(name) or ""
     if name == "" then
-        ns.Print("|cffFFD700[FnC]|r Usage: /fnc simdeath <name>  (run /fnc simdamage first for a cause)")
+        ns.Print("|cffFFD700[FnC]|r Usage: /fnc simdeath <name> [nobox]  (run /fnc simdamage first for a cause)")
         return
     end
-    ns.ForceSandbox(3)
+    SimSandbox(nobox, 3)
     OnUnitDied("Sim-" .. name, name, COMBATLOG_OBJECT_TYPE_PLAYER, true)
 end
 
@@ -667,17 +692,18 @@ end
 
 fncCommands["simbatch"] = function(arg)
     if not RequireDebug() then return end
-    local milestone, n = (arg or ""):match("^(%d+)%s+(%d+)")
+    local rest, nobox = StripNobox(arg)
+    local milestone, n = (rest or ""):match("^(%d+)%s+(%d+)")
     milestone, n = tonumber(milestone), tonumber(n)
     if not milestone or not MILESTONES[milestone] or not n or n < 1 then
         local keys = {}
         for k in pairs(MILESTONES) do table.insert(keys, k) end
         table.sort(keys)
-        ns.Print("|cffFFD700[FnC]|r Usage: /fnc simbatch <milestone> <count>  (milestones: "
+        ns.Print("|cffFFD700[FnC]|r Usage: /fnc simbatch <milestone> <count> [nobox]  (milestones: "
             .. table.concat(keys, " ") .. ")")
         return
     end
-    ns.ForceSandbox(3)
+    SimSandbox(nobox, 3)
     for i = 1, math.min(n, 10) do
         QueueMilestone({ name = "Simmy" .. i, cause = "slain by simulation (physical)" }, milestone)
     end
@@ -688,12 +714,15 @@ end
 -- Simmy eats 15 -- every milestone through the top -- the others split the
 -- rest. Causes avoid falling on purpose: the falling dedup would swallow
 -- follow-up deaths within its 16s window.
-fncCommands["longsim"] = function()
+fncCommands["longsim"] = function(arg)
     if not RequireDebug() then return end
+    local _, nobox = StripNobox(arg)
     if next(ns.db.fnc.deaths) then
         ns.Print("|cffFFD700[FnC]|r Note: existing deaths recorded, so first blood won't fire. /fnc reset first for the full tour.")
     end
-    ns.Print("|cffFFD700[FnC]|r longsim: 30 deaths / 3 characters / ~30s (sandboxed)...")
+    ns.Print("|cffFFD700[FnC]|r longsim: 30 deaths / 3 characters / ~30s"
+        .. (nobox and "" or " (sandboxed)") .. "...")
+    if nobox then SimSandbox(true) end
 
     -- Round-robin so the streaks interleave; once the others run dry, Simmy's
     -- solo tail run hits 10/12/14/15 back to back.
@@ -719,7 +748,9 @@ fncCommands["longsim"] = function()
 
     for i, name in ipairs(schedule) do
         C_Timer.After(i, function()
-            ns.ForceSandbox(5) -- rolling window covers batched announces too
+            if not nobox then
+                ns.ForceSandbox(5) -- rolling window covers batched announces too
+            end
             local cause = causes[(i - 1) % #causes + 1]
             RecordDamage("Sim-" .. name, cause, name)
             OnUnitDied("Sim-" .. name, name, COMBATLOG_OBJECT_TYPE_PLAYER, true)
@@ -746,11 +777,12 @@ function fnc.PrintCommands()
     print("  |cffffff00/fnc help|r    - show this message")
     if ns.db.debug then
         print("  |cffffff00/fnc simdamage <name> <cause>|r - (debug) record fake damage")
-        print("  |cffffff00/fnc simdeath <name>|r          - (debug) simulate a death")
-        print("  |cffffff00/fnc simbatch <milestone> <n>|r - (debug) simulate batched milestones")
+        print("  |cffffff00/fnc simdeath <name> [nobox]|r  - (debug) simulate a death")
+        print("  |cffffff00/fnc simbatch <m> <n> [nobox]|r - (debug) simulate batched milestones")
         print("  |cffffff00/fnc simsound [milestone]|r     - (debug) play a sound via a fake line (no arg = first blood)")
         print("  |cffffff00/fnc simreset|r                 - (debug) simulate receiving a group reset")
-        print("  |cffffff00/fnc longsim|r                  - (debug) 30 deaths / 3 characters / 30s, topping out the milestones")
+        print("  |cffffff00/fnc longsim [nobox]|r          - (debug) 30 deaths / 3 characters / 30s, topping out the milestones")
+        print("  Append |cffffff00nobox|r to announce to real chat, e.g. for testing other clients' sounds.")
     end
 end
 
