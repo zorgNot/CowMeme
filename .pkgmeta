@@ -8,3 +8,4 @@ ignore:
     - watch.ps1
     - README.md
     - CrossGambling.md
+    - DEV_README.md
