@@ -241,11 +241,13 @@ local helpDetails = {
         "Print the installed CowMeme version (from the .toc).",
     },
     roster = {
-        "|cffffff00/cm roster [status|demo|simtie|start|add|remove|close|roll|remind]|r",
+        "|cffffff00/cm roster [status|demo|simtie|simhost|start|add|remove|close|roll|remind]|r",
         "The gamba signup roster (built from CrossGambling's own broadcasts) and",
-        "the roll-nudge button. /cm roster status lists who signed up but hasn't",
-        "rolled. The rest are debug sims (need /cm debug on); /cm roster demo runs",
-        "the whole lifecycle, /cm roster simtie [high|low] exercises a tie breaker.",
+        "the nudge button. During the roll phase it whispers a straggler to roll;",
+        "if registration drags past 20s it offers a host nudge instead. /cm roster",
+        "status lists signups and who is pending. The rest are debug sims (need",
+        "/cm debug on): demo runs the lifecycle, simtie [high|low] a tie breaker,",
+        "simhost the host-nudge offer.",
         "/cm roster finish rolls out everyone still pending and closes the game.",
     },
     panel = {
@@ -413,6 +415,7 @@ commands["roster"] = function(arg)
         print("  |cffffff00/cm roster status|r        - show signups and who is pending")
         print("  |cffffff00/cm roster demo|r          - run the full lifecycle sim")
         print("  |cffffff00/cm roster simtie [high|low]|r - run the tie-breaker sim")
+        print("  |cffffff00/cm roster simhost|r       - run the host-nudge sim (entries stay open)")
         print("  |cffffff00/cm roster start [wager]|r - sim a new game (default 100)")
         print("  |cffffff00/cm roster add <name>|r    - sim a signup")
         print("  |cffffff00/cm roster remove <name>|r - sim a withdrawal")
@@ -427,6 +430,8 @@ commands["roster"] = function(arg)
         ns.gambaRoster.SimDemo()
     elseif sub == "simtie" then
         ns.gambaRoster.SimTie(rest:match("^(%S*)"):lower())
+    elseif sub == "simhost" then
+        ns.gambaRoster.SimHostNudge()
     elseif sub == "start" then
         ns.gambaRoster.SimStart(tonumber(rest))
         ns.Print("Roster sim: new game" .. (tonumber(rest) and (" (1-" .. tonumber(rest) .. ")") or " (1-100)") .. ".")

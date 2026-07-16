@@ -145,27 +145,33 @@ nudgeButton:SetPoint("TOPRIGHT", frame, "BOTTOMRIGHT", 0, -2)
 nudgeButton:SetText("Nudge a roller")
 nudgeButton:Hide()
 
-local nudgeCount = 0 -- last count passed to SetNudge, remembered for ApplyState
+local nudgeWanted = false -- whether a caller currently wants the button shown
+local nudgeText = nil     -- its label, remembered for ApplyState re-evaluation
 
 function panel.SetNudgeHandler(fn)
     nudgeButton:SetScript("OnClick", function() fn() end)
 end
 
--- Show/hide the nudge button and label it with how many are still pending.
--- count: 0/nil hides it; a positive number shows "Nudge a roller (#)".
 -- Actual visibility also requires the panel to be enabled and shown.
--- Remembered so ApplyState can re-evaluate on enable/disable.
-function panel.SetNudge(count)
-    nudgeCount = count or 0
-    local wanted = nudgeCount > 0
-    if wanted then
-        nudgeButton:SetText("Nudge a roller (" .. nudgeCount .. ")")
-    end
-    if wanted and ns.db.enabled and ns.db.panel.shown then
+local function RefreshNudgeVisibility()
+    if nudgeWanted and ns.db.enabled and ns.db.panel.shown then
         nudgeButton:Show()
     else
         nudgeButton:Hide()
     end
+end
+
+-- Show/hide the nudge button and set its label. The label is caller-supplied
+-- because the button serves more than one role (nudge a roller during the roll
+-- phase, nudge the host during registration); pass nil/"" to hide it. The last
+-- label is remembered so ApplyState can re-evaluate visibility on enable/disable.
+function panel.SetNudge(text)
+    nudgeWanted = text ~= nil and text ~= ""
+    if nudgeWanted then
+        nudgeText = text
+        nudgeButton:SetText(text)
+    end
+    RefreshNudgeVisibility()
 end
 
 -- Grey out (or restore) the button, e.g. while a caller-owned throttle is
@@ -352,7 +358,7 @@ function panel.ApplyState()
     else
         frame:Hide()
     end
-    panel.SetNudge(nudgeCount) -- re-evaluate button visibility for the new state
+    RefreshNudgeVisibility() -- re-evaluate button visibility for the new state
 end
 
 function panel.SetShown(shown)

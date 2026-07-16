@@ -9,7 +9,23 @@ ns.gambaRoster = {}
 local roster = ns.gambaRoster
 
 local CG_PREFIX = "CrossGambling"
-local REMINDER_THROTTLE = 3 -- seconds between reminders this client can send
+local REMINDER_THROTTLE = 5 -- seconds between reminders this client can send
+local HOST_NUDGE_DELAY = 20 -- seconds into registration before offering the host nudge
+
+-- Public callouts for when the host has left entries open too long. Sent to the
+-- game channel (not a whisper) since we don't reliably know who the host is.
+local HOST_NUDGE_TEXTS = {
+"host fell asleep at the wheel, close entries!",
+"entries have been open a hot minute, start the rolls",
+"gamba host went AFK mid-hosting KEKW",
+"we're all signed up over here, whenever you're ready",
+"close it up and let's roll already",
+"host buffering... start the rolls",
+"the money's getting cold, start the rolls",
+"registration lasting longer than the raid, close entries",
+"host forgot they were hosting ICANT",
+"someone poke the host, entries still open",
+}
 local REMINDER_TEXTS = {
 "forgot to roll ICANT",
 "bro missed the only mechanic",
@@ -78,9 +94,12 @@ local REMINDER_TEXTS = {
 local players = {}
 local stake = nil        -- wager (max roll) from SET_WAGER, or nil if unseen
 local rolling = false    -- true once entries close (Disable_Join)
+local host = nil         -- realm-stripped name of the game's host (the comm sender)
 local gameChannel = nil  -- channel CG comm arrived on = where to send reminders
 local lastReminder = 0
 local tie = nil          -- { type = "High"/"Low", names = {...} } while a tie is live
+local hostNudgeReady = false -- true once registration has dragged past HOST_NUDGE_DELAY
+local regTimer = nil     -- C_Timer counting down the host-nudge offer
 
 local frame = CreateFrame("Frame", "CowMemeGambaRosterFrame", UIParent)
 
@@ -88,11 +107,24 @@ local function Strip(name)
     return name and (name:match("^([^%-]+)") or name)
 end
 
+-- The host nudge is offered only while entries stay open too long. Cancel it the
+-- moment the phase changes (rolls open, game clears) so a stale timer can't flip
+-- the button back on. Declared before ClearRoster since it calls this.
+local function CancelHostNudge()
+    hostNudgeReady = false
+    if regTimer then
+        regTimer:Cancel()
+        regTimer = nil
+    end
+end
+
 local function ClearRoster()
     wipe(players)
     stake = nil
     rolling = false
+    host = nil
     tie = nil
+    CancelHostNudge()
 end
 
 -- Pending = signed up but not yet rolled
@@ -119,9 +151,30 @@ function roster.HasPending()
     return false
 end
 
+-- The single panel nudge button serves both phases: nudge a straggling roller
+-- once rolls are open, or nudge the host to start rolls if registration drags.
 local function RefreshButton()
-    -- Pending count is only meaningful during the roll phase
-    ns.panel.SetNudge(rolling and #roster.Pending() or 0)
+    if rolling then
+        local pending = #roster.Pending()
+        ns.panel.SetNudge(pending > 0 and ("Nudge a roller (" .. pending .. ")") or nil)
+    elseif hostNudgeReady then
+        ns.panel.SetNudge("Gamba host start rolls!")
+    else
+        ns.panel.SetNudge(nil)
+    end
+end
+
+-- Start the countdown that offers the host nudge if entries are still open when
+-- it fires. Re-armed from scratch on every new game.
+local function ArmHostNudge()
+    CancelHostNudge()
+    regTimer = C_Timer.NewTimer(HOST_NUDGE_DELAY, function()
+        regTimer = nil
+        if not rolling then
+            hostNudgeReady = true
+            RefreshButton()
+        end
+    end)
 end
 
 -- CrossGambling broadcasts no tie-breaker event on the addon-comm plane, so we
@@ -171,13 +224,16 @@ local function CheckForTie()
     RefreshButton()
 end
 
--- CrossGambling comm: event or event:arg under the CrossGambling prefix
-local function OnAddonMsg(prefix, msg, channel)
+-- CrossGambling comm: event or event:arg under the CrossGambling prefix. The
+-- host is the only sender of these events, so the message sender is the host.
+local function OnAddonMsg(prefix, msg, channel, sender)
     if prefix ~= CG_PREFIX then return end
     gameChannel = channel -- remember where this game lives for reminders
     local event, arg = strsplit(":", msg)
     if event == "New_Game" or event == "R_NewGame" then
         ClearRoster()
+        host = Strip(sender) -- ClearRoster wiped it; the game-open sender is the host
+        ArmHostNudge() -- registration just started; offer the host nudge if it stalls
     elseif event == "SET_WAGER" then
         stake = tonumber(arg)
     elseif event == "ADD_PLAYER" then
@@ -194,6 +250,7 @@ local function OnAddonMsg(prefix, msg, channel)
         end
     elseif event == "Disable_Join" then
         rolling = true
+        CancelHostNudge() -- rolls are open now; the host-nudge offer is moot
         ns.DebugPrint("roster", "entries closed; roll phase, " .. #roster.Pending() .. " signed up")
     else
         return -- unrelated CG event, no button refresh needed
@@ -221,47 +278,82 @@ end
 
 frame:SetScript("OnEvent", function(self, event, ...)
     if event == "CHAT_MSG_ADDON" then
-        local prefix, msg, channel = ...
-        OnAddonMsg(prefix, msg, channel)
+        local prefix, msg, channel, sender = ...
+        OnAddonMsg(prefix, msg, channel, sender)
     elseif event == "CHAT_MSG_SYSTEM" then
         local text = ...
         OnSystemMsg(text)
     end
 end)
 
--- Button action: remind a random pending player to roll. Manual (button is a
--- hardware event), so not leader-gated; throttled so one client can't spam.
-function roster.SendReminder()
-    if not roster.HasPending() then
-        ns.Print("|cffFFD700[Gamba]|r No one is pending a roll right now.")
-        return
-    end
+-- Shared throttle gate for the manual nudge actions below. Returns true (and
+-- greys the button for the throttle window) when the caller may proceed.
+local function ThrottleNudge()
     local now = GetTime()
     local wait = REMINDER_THROTTLE - (now - lastReminder)
     if wait > 0 then
         -- The button should already be disabled for this window; this is a
         -- backstop for callers that bypass it (e.g. the /cm roster remind sim).
-        ns.Print(string.format("|cffFFD700[Gamba]|r Reminder throttled (%.0fs).", wait))
-        return
+        ns.Print(string.format("|cffFFD700[Gamba]|r Nudge throttled (%.0fs).", wait))
+        return false
     end
     lastReminder = now
+    ns.panel.SetNudgeEnabled(false)
+    C_Timer.After(REMINDER_THROTTLE, function()
+        ns.panel.SetNudgeEnabled(true)
+    end)
+    return true
+end
+
+-- Button action during the roll phase: whisper a random pending player to roll.
+-- A private nudge rather than a channel callout so we don't spam the raid with
+-- one straggler's name. Manual (button is a hardware event), so not leader-gated.
+function roster.SendReminder()
+    if not roster.HasPending() then
+        ns.Print("|cffFFD700[Gamba]|r No one is pending a roll right now.")
+        return
+    end
+    if not ThrottleNudge() then return end
 
     local name = roster.PickRandomPending()
-    local msg = stake and (name .. ": " .. REMINDER_TEXTS[math.random(#REMINDER_TEXTS)] .. " ( /roll " .. stake .. " )")
-        or (name .. ": " .. REMINDER_TEXTS[math.random(#REMINDER_TEXTS)] .. " ( /roll )")
-    local channel = gameChannel or ns.CanonicalChannel() or "SAY"
+    local msg = REMINDER_TEXTS[math.random(#REMINDER_TEXTS)]
+        .. (stake and (" ( /roll " .. stake .. " )") or " ( /roll )")
+    if ns.SandboxActive() then
+        ns.Print("|cff00ccff[SANDBOX -> WHISPER " .. name .. "]|r " .. msg)
+    else
+        SendChatMessage(msg, "WHISPER", nil, name)
+    end
+    ns.DebugPrint("roster", "whispered reminder to " .. name)
+end
+
+-- Button action during registration: publicly nudge the host to start rolls.
+-- Goes to the group channel (the social pressure is the point), addressing the
+-- host by name since we captured them as the game's comm sender.
+function roster.NudgeHost()
+    if rolling then
+        ns.Print("|cffFFD700[Gamba]|r Rolls are already open.")
+        return
+    end
+    if not ThrottleNudge() then return end
+
+    local text = HOST_NUDGE_TEXTS[math.random(#HOST_NUDGE_TEXTS)]
+    local msg = host and (host .. ": " .. text) or text
+    local channel = ns.CanonicalChannel() or gameChannel or "SAY"
     if ns.SandboxActive() then
         ns.Print("|cff00ccff[SANDBOX -> " .. channel .. "]|r " .. msg)
     else
         SendChatMessage(msg, channel)
     end
-    ns.DebugPrint("roster", "reminded " .. name .. " on " .. channel)
+    ns.DebugPrint("roster", "nudged host " .. (host or "?") .. " on " .. channel)
+end
 
-    -- Grey the button out for the throttle window, then restore it
-    ns.panel.SetNudgeEnabled(false)
-    C_Timer.After(REMINDER_THROTTLE, function()
-        ns.panel.SetNudgeEnabled(true)
-    end)
+-- Panel button dispatcher: which nudge fires depends on the current phase.
+function roster.OnNudge()
+    if rolling then
+        roster.SendReminder()
+    else
+        roster.NudgeHost()
+    end
 end
 
 -- One-line status (safe to call anytime; usually empty outside a game)
@@ -270,7 +362,7 @@ function roster.PrintStatus()
     local total = 0
     for _ in pairs(players) do total = total + 1 end
     print("  |cffFFD700Roster|r: " .. total .. " signed up, " .. #pending .. " pending"
-        .. (rolling and " (rolling)" or " (entries open)")
+        .. (rolling and " (rolling)" or (hostNudgeReady and " (entries open, host nudge ready)" or " (entries open)"))
         .. (stake and (", stake 1-" .. stake) or "")
         .. (tie and (", " .. tie.type .. " tie: " .. table.concat(tie.names, ", ")) or "")
         .. (#pending > 0 and (" [" .. table.concat(pending, ", ") .. "]") or ""))
@@ -290,13 +382,14 @@ function roster.ApplyState()
 end
 
 -- Debug sims: feed the real internal handlers so the actual tracking logic
--- runs. A fake channel stands in for the game's channel; reminders are
+-- runs. A fake channel/host stand in for the real game's; reminders are
 -- sandbox-safe, and SimDemo forces the sandbox so button clicks stay local.
 local SIM_CHANNEL = "PARTY"
+local SIM_HOST = "Hostcow"
 
 function roster.SimStart(wager)
-    OnAddonMsg(CG_PREFIX, "New_Game", SIM_CHANNEL)
-    OnAddonMsg(CG_PREFIX, "SET_WAGER:" .. (wager or 100), SIM_CHANNEL)
+    OnAddonMsg(CG_PREFIX, "New_Game", SIM_CHANNEL, SIM_HOST)
+    OnAddonMsg(CG_PREFIX, "SET_WAGER:" .. (wager or 100), SIM_CHANNEL, SIM_HOST)
 end
 
 function roster.SimAdd(name)
@@ -385,9 +478,22 @@ function roster.SimTie(kind)
     end)
 end
 
+-- Host-nudge demo: start a game, add signups, and deliberately leave entries
+-- open. The real HOST_NUDGE_DELAY timer fires and the button relabels to "Nudge
+-- gamba host to start rolls"; clicking it calls the host out in channel (sandboxed).
+function roster.SimHostNudge()
+    ns.ForceSandbox(HOST_NUDGE_DELAY + 40) -- cover the wait plus a click or two
+    roster.SimStart(100)
+    roster.SimAdd("Beaglz")
+    roster.SimAdd("Soffty")
+    ns.Print("|cffFFD700[Gamba]|r host-nudge demo: entries left open (host " ..
+        SIM_HOST .. "). In " .. HOST_NUDGE_DELAY .. "s the button becomes \"Nudge gamba" ..
+        " host to start rolls\" -- click it (sandboxed) to call the host out in channel.")
+end
+
 -- Called from OnLoad after db is ready
 function roster.Init()
     C_ChatInfo.RegisterAddonMessagePrefix(CG_PREFIX)
-    ns.panel.SetNudgeHandler(function() roster.SendReminder() end)
+    ns.panel.SetNudgeHandler(function() roster.OnNudge() end)
     roster.ApplyState()
 end
