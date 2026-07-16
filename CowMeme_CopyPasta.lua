@@ -102,6 +102,28 @@ local function LossPhrase(seed)
     return LOSS_PHRASES[(h % #LOSS_PHRASES) + 1]
 end
 
+-- "Savor" window: after showing a celebratory image (a pasta card or the
+-- no-winners tombstone), hold off any roll-tracker repaint for a few seconds so
+-- a leader who immediately restarts gamba doesn't instantly wipe the image with
+-- "Waiting for entries...". Only the visual is held; state tracking never waits.
+local SAVOR_TIME = 5
+local savorUntil = 0
+local savorTimer = nil
+local headerClearPending = false
+
+-- Seconds left in the savor window (0 once it has expired)
+local function SavorRemaining()
+    return math.max(0, savorUntil - GetTime())
+end
+
+-- Mark that an image was just shown, protecting it from repaints for SAVOR_TIME.
+-- Any repaint already queued behind an earlier image is now stale, so drop it.
+local function SavorImage()
+    savorUntil = GetTime() + SAVOR_TIME
+    if savorTimer then savorTimer:Cancel(); savorTimer = nil end
+    headerClearPending = false
+end
+
 -- Local-only display: every client renders this itself; never leader-gated.
 -- entry may be nil for an unregistered ower; the addon icon is the fallback.
 local function ShowPastaOnPanel(key, entry, seed)
@@ -110,6 +132,7 @@ local function ShowPastaOnPanel(key, entry, seed)
         text = "|cffFFD700" .. key .. "|r " .. LossPhrase(seed),
         duration = PASTA_PANEL_DURATION,
     })
+    SavorImage()
 end
 
 -- Pick a random line and send to chat. Manual sends are a personal act:
@@ -249,6 +272,34 @@ local function UpdateRollPanel(footer)
     })
 end
 
+-- Deferred owes-echo clear, applied whenever the roll panel actually repaints
+local function FlushHeaderClear()
+    if headerClearPending then
+        headerClearPending = false
+        ns.panel.SetHeader(nil)
+    end
+end
+
+-- Repaint the roll tracker, unless a just-shown image is still being savored --
+-- then hold the repaint until the savor window ends and render whatever the
+-- state is by then. A single coalesced timer covers the back-to-back start and
+-- wager lines. Used for the early-game repaints that can collide with a savored
+-- image (start/stake/entries); mid-game repaints (rolls, tie breakers) go
+-- straight to UpdateRollPanel since they can't land inside the window.
+local function RefreshRollPanel()
+    local wait = SavorRemaining()
+    if wait <= 0 then
+        FlushHeaderClear()
+        UpdateRollPanel()
+    elseif not savorTimer then
+        savorTimer = C_Timer.NewTimer(wait, function()
+            savorTimer = nil
+            FlushHeaderClear()
+            UpdateRollPanel()
+        end)
+    end
+end
+
 -- System messages: track "/roll" results, but only after entries have closed
 -- and only rolls made for the game's stake
 local function OnSystemMsg(msg)
@@ -298,10 +349,10 @@ local function OnGambaChat(msg, sender)
         gambaStake = nil -- unknown until the host's "Wager - Ng" line arrives
         gambaTie = nil
         wipe(gambaRolls)
-        ns.panel.SetHeader(nil) -- clear last game's owes echo
+        headerClearPending = true -- clear last game's owes echo (deferred while savoring)
         ns.DebugPrint("cp", "gamba: new game started, host = " .. tostring(sender) ..
             ", stake = " .. (gambaStake and ("1-" .. gambaStake) or "unknown"))
-        UpdateRollPanel()
+        RefreshRollPanel()
         return
     end
 
@@ -310,7 +361,7 @@ local function OnGambaChat(msg, sender)
         if sender == activeHost then
             rollsOpen = true
             ns.DebugPrint("cp", "gamba: entries closed, rolls now counting")
-            UpdateRollPanel() -- flip the panel to "Waiting for rolls..."
+            RefreshRollPanel() -- flip the panel to "Waiting for rolls..."
         end
         return
     end
@@ -327,6 +378,7 @@ local function OnGambaChat(msg, sender)
         wipe(gambaRolls)
         ns.panel.SetHeader("|cffff8800No winners this round!|r", 12)
         ns.panel.ShowArt(NO_WINNERS_ART, { duration = 12 })
+        SavorImage() -- let the tombstone breathe before a new game repaints
         return
     end
 
@@ -338,7 +390,7 @@ local function OnGambaChat(msg, sender)
         if wager then
             gambaStake = tonumber((wager:gsub(",", "")))
             ns.DebugPrint("cp", "gamba: stake set to 1-" .. tostring(gambaStake))
-            UpdateRollPanel() -- show the stake in the panel title
+            RefreshRollPanel() -- show the stake in the panel title
             return
         end
 
@@ -512,7 +564,7 @@ function cp.PrintCommands()
     if ns.db.debug then
         print("  |cffffff00/cp simgamba <chat line>|r - (debug) feed a fake line to the gamba monitor")
         print("  |cffffff00/cp simroll <name> <n>|r   - (debug) feed a fake /roll to the top-roll tracker")
-        print("  |cffffff00/cp simdemo [name]|r       - (debug) run the gamba demo, optionally targeting a player")
+        print("  |cffffff00/cp simdemo [name]|r       - (debug) run the full gamba lifecycle demo (register -> rolls -> pasta)")
         print("  |cffffff00/cp simtie [high|low]|r    - (debug) run the tie-breaker demo")
         print("  |cffffff00/cp simnowin|r             - (debug) run the no-winners demo")
     end
@@ -550,9 +602,13 @@ local function HandleSlash(input)
         return
     end
 
-    -- "/cp simdemo [name]" runs the full gamba flow: game start, a few rolls,
-    -- then the host's "owes" line firing a pasta -- staggered so it's watchable.
-    -- An optional target name makes that player the loser who gets pasta'd.
+    -- "/cp simdemo [name]" runs the full gamba lifecycle so the whole panel
+    -- flow is watchable: the register phase ("Waiting for entries..." with the
+    -- stake), entries closing, rolls arriving, then the host's "owes" line
+    -- firing a pasta. An optional target name makes that player the loser.
+    -- Respects the savor window: if a pasta/tombstone is still on screen from a
+    -- previous run, the demo waits it out so the register phase isn't swallowed
+    -- by the deferred repaint.
     if lowerInput == "simdemo" or lowerInput:match("^simdemo%s") then
         if not (ns.db and ns.db.debug) then
             ns.Print("|cffFFD700[CopyPasta]|r Debug mode required: /cm debug on")
@@ -566,26 +622,33 @@ local function HandleSlash(input)
             ns.Print("Registered players: " .. cp.ListPlayers())
             return
         end
-        ns.Print("|cffFFD700[CopyPasta]|r sim: running gamba demo targeting " .. key .. " (sandboxed, ~6s)...")
-        ns.ForceSandbox(9)
-        OnGambaChat(GAMBA_START_MSG .. " (1-100)", "SimHost")
-        OnGambaChat(GAMBA_ROLL_MSG, "SimHost") -- close entries so rolls count
+        local base = SavorRemaining() -- hold for any active savor
+        ns.ForceSandbox(base + 12)
+        ns.Print("|cffFFD700[CopyPasta]|r sim: full gamba demo targeting " .. key
+            .. (base > 0 and string.format(" (after %.0fs savor)", base) or "") .. " (sandboxed)...")
+        local function at(delay, fn) C_Timer.After(base + delay, fn) end
+
+        -- Register phase: open the game and announce the stake. The panel holds
+        -- on "Waiting for entries..." until entries close a few seconds later.
+        at(0, function()
+            OnGambaChat(GAMBA_START_MSG .. " (1-100)", "SimHost")
+            OnGambaChat("Game Mode - Classic - Wager - 100g", "SimHost")
+        end)
+        at(4, function() OnGambaChat(GAMBA_ROLL_MSG, "SimHost") end) -- close entries
+
         -- Fixed high rollers, skipping any that collide with the target so the
         -- target's low roll below isn't dropped as a reroll.
-        local t = 1
+        local t = 5
         for _, r in ipairs({ { "Beaglz", 42 }, { "Bagelbob", 43 }, { "Soffty", 87 } }) do
             if r[1]:lower() ~= target:lower() then
                 local nm, rv = r[1], r[2]
-                C_Timer.After(t, function() OnSystemMsg(nm .. " rolls " .. rv .. " (1-100)") end)
+                at(t, function() OnSystemMsg(nm .. " rolls " .. rv .. " (1-100)") end)
                 t = t + 1
             end
         end
         -- Target is the low roller / loser, then owes and gets pasta'd
-        C_Timer.After(t, function() OnSystemMsg(target .. " rolls 3 (1-100)") end)
-        C_Timer.After(t + 1, function()
-            ns.ForceSandbox(3)
-            OnGambaChat(target .. " owes 84g to a very long name", "SimHost")
-        end)
+        at(t, function() OnSystemMsg(target .. " rolls 3 (1-100)") end)
+        at(t + 1, function() OnGambaChat(target .. " owes 84g to a very long name", "SimHost") end)
         return
     end
 

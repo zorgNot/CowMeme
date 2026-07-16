@@ -79,7 +79,10 @@ function ns.PlaySound(file)
     if volume <= 0 then return false end
     local path = file:find("\\", 1, true) and file or (SOUND_PATH .. file)
 
-    if volume >= 1 then
+    -- >= 0.995, not == 1: saved slider values are step-snapped 32-bit floats,
+    -- so "100%" may persist as 0.99999994; treat anything that displays as
+    -- 100% as full volume rather than rerouting it to the Dialog channel.
+    if volume >= 0.995 then
         return PlaySoundFile(path, "Master") and true or false
     end
 
@@ -226,7 +229,7 @@ local helpDetails = {
         "/cm debug on|off flips the master switch; sim output is always sandboxed.",
     },
     status = {
-        "|cffffff00/cm status|r",
+        "|cffffff00/cm status|r (alias /cm s)",
         "Show current settings: addon enabled/debug, FnC tracking and batch mode,",
         "CopyPasta gamba announcing, sync leader, and panel state.",
     },
@@ -263,7 +266,7 @@ commands["help"] = function()
     if ns.db.debug then
         print("  |cffffff00/cm roster|r      - (debug) gamba roster and roll-nudge sims")
     end
-    print("  |cffffff00/cm status|r      - show current settings")
+    print("  |cffffff00/cm status|r      - show current settings (alias /cm s)")
     print("  |cffffff00/cm version|r     - show the addon version")
     print("  |cffffff00/fnc help|r       - Fast and Clean death tracker (see for details)")
     print("  |cffffff00/cp help|r        - CopyPasta (see for details)")
@@ -329,7 +332,7 @@ commands["debug"] = function(arg)
         print("  |cffffff00/fnc longsim [nobox]|r          - 30 deaths / 3 characters / 30s, topping out the milestones")
         print("  |cffffff00/cp simgamba <chat line>|r      - feed a fake line to the gamba monitor")
         print("  |cffffff00/cp simroll <name> <n>|r        - feed a fake /roll to the top-roll tracker")
-        print("  |cffffff00/cp simdemo [name]|r            - run the gamba demo, optionally targeting a player")
+        print("  |cffffff00/cp simdemo [name]|r            - run the full gamba lifecycle demo (register -> rolls -> pasta)")
         print("  |cffffff00/cp simtie [high|low]|r         - run the CopyPasta tie-breaker demo")
         print("  |cffffff00/cp simnowin|r                  - run the no-winners (tombstone) demo")
         print("  |cffffff00/cm roster simtie [high|low]|r  - run the GambaRoster tie-breaker demo")
@@ -470,6 +473,7 @@ commands["status"] = function()
     end
     ns.panel.PrintStatus()
 end
+commands["s"] = commands["status"]
 
 local function HandleSlash(input)
     local cmd, arg = strtrim(input):match("^(%S*)%s*(.*)")

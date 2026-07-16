@@ -171,19 +171,42 @@ end
 -- see, play the matching sound. Every client that sees the text hears the
 -- sound (the announcer too, via their own echoed message), so audio always
 -- agrees with what the group is reading -- no cross-client state needed.
--- The {rt8} suffix requirement filters casual hand-typed spoofs.
+-- A skull-mark suffix (see HasSkullMark) filters casual hand-typed spoofs.
 local SOUND_LINES = {
     { match = "^First blood! ", sound = "cm_firstblood.ogg" },
     -- Milestone entries are appended below, derived from MILESTONES so a
     -- reworded milestone can't silently break its sound.
 }
 
--- Returns true if a line matched and its sound actually played
+-- The sent {rt8} can arrive in a payload in either of two forms: literal, or
+-- already expanded by the client into its texture escape
+-- (|TInterface\TargetingFrame\UI-RaidTargetingIcon_8:0|t) -- guild chat has
+-- been observed delivering the expanded form. Accept both. Players cannot
+-- type the |T form at all, so this stays spoof-resistant.
+local function HasSkullMark(msg)
+    return (msg:find("{rt8}", 1, true)
+        or msg:find("UI-RaidTargetingIcon_8", 1, true)) ~= nil
+end
+
+-- Returns true if a line matched and its sound actually played. Traces every
+-- distinct failure mode (debugFnc): phrase matched but the skull mark missing
+-- (truncated?), matched but the engine/gates refused, or a skull-marked line
+-- matching no entry.
 local function OnFncChat(msg)
     for _, entry in ipairs(SOUND_LINES) do
-        if msg:find(entry.match) and msg:find("{rt8}", 1, true) then
-            return ns.PlaySound(entry.sound)
+        if msg:find(entry.match) then
+            if not HasSkullMark(msg) then
+                ns.DebugPrint("fnc", "sound: matched " .. entry.sound .. " but no skull mark (truncated?); not playing")
+                return false
+            end
+            local played = ns.PlaySound(entry.sound)
+            ns.DebugPrint("fnc", "sound: " .. entry.sound ..
+                (played and " played" or " NOT played (sound toggle/volume/engine refused)"))
+            return played
         end
+    end
+    if HasSkullMark(msg) then
+        ns.DebugPrint("fnc", "sound: skull-marked line matched no entry: " .. msg)
     end
     return false
 end

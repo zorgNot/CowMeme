@@ -118,6 +118,10 @@ _G[volumeSlider:GetName() .. "Low"]:SetText("0%")
 _G[volumeSlider:GetName() .. "High"]:SetText("100%")
 local volumeLabel = _G[volumeSlider:GetName() .. "Text"]
 volumeSlider:SetScript("OnValueChanged", function(self, value)
+    -- Slider values are step-snapped 32-bit floats: "100%" can arrive as
+    -- 0.99999994, which would silently fail ns.PlaySound's full-volume check
+    -- and reroute sounds to the Dialog channel. Round to the displayed value.
+    value = math.floor(value * 100 + 0.5) / 100
     ns.db.soundVolume = value
     volumeLabel:SetText(string.format("Volume: %.0f%%", value * 100))
 end)
