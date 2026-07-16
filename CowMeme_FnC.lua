@@ -771,6 +771,7 @@ fncCommands["longsim"] = function(arg)
 
     for i, name in ipairs(schedule) do
         C_Timer.After(i, function()
+            if not ns.db.debug then return end -- debug off mid-sim: abort, don't leak
             if not nobox then
                 ns.ForceSandbox(5) -- rolling window covers batched announces too
             end

@@ -119,18 +119,21 @@ function ns.DebugPrint(scope, msg)
     end
 end
 
--- Sim commands force sandbox routing for a few seconds so fake events can
--- never reach real chat, regardless of the sandbox toggle.
+-- Sim commands force sandbox routing for a few seconds so fake events can't
+-- reach real chat while they play out. The window only holds while master
+-- debug is on; staggered sims also re-check debug at fire time and abort
+-- their remaining ticks once it goes off, so they can't leak either.
 local simSandboxUntil = 0
 function ns.ForceSandbox(seconds)
     simSandboxUntil = GetTime() + (seconds or 3)
 end
 
 -- True when announcements should print locally instead of going to chat.
--- The sandbox toggle only applies while master debug is on; the sim force
--- window stands alone (sim commands are already debug-gated).
+-- Master debug is the hard gate: with it off, neither the sandbox toggle nor
+-- an armed sim window can produce sandbox output, full stop.
 function ns.SandboxActive()
-    return (ns.db and ns.db.debug and ns.db.debugSandbox) or GetTime() < simSandboxUntil
+    if not (ns.db and ns.db.debug) then return false end
+    return ns.db.debugSandbox or GetTime() < simSandboxUntil
 end
 
 -- The canonical channel: the best non-protected channel available.

@@ -578,6 +578,15 @@ function cp.PrintStatus()
     print("  |cffFFD700CopyPasta|r: gamba announcing " .. gamba .. ", " .. n .. " players")
 end
 
+-- Staggered sim ticks re-check debug at fire time, so turning debug off
+-- mid-sim aborts the remainder instead of leaking fake events into the live
+-- handlers (SandboxActive is false once debug is off).
+local function SimTimer(delay, fn)
+    C_Timer.After(delay, function()
+        if ns.db and ns.db.debug then fn() end
+    end)
+end
+
 -- Slash command: /copypasta <charname> [channel]
 local function HandleSlash(input)
     -- "/cp simgamba <chat line>" needs the raw remainder, so handle it first
@@ -626,7 +635,7 @@ local function HandleSlash(input)
         ns.ForceSandbox(base + 12)
         ns.Print("|cffFFD700[CopyPasta]|r sim: full gamba demo targeting " .. key
             .. (base > 0 and string.format(" (after %.0fs savor)", base) or "") .. " (sandboxed)...")
-        local function at(delay, fn) C_Timer.After(base + delay, fn) end
+        local function at(delay, fn) SimTimer(base + delay, fn) end
 
         -- Register phase: open the game and announce the stake. The panel holds
         -- on "Waiting for entries..." until entries close a few seconds later.
@@ -667,24 +676,24 @@ local function HandleSlash(input)
         OnGambaChat("Game Mode - Classic - Wager - 100g", "SimHost")
         OnGambaChat(GAMBA_ROLL_MSG, "SimHost") -- close entries so rolls count
         if kind == "high" then
-            C_Timer.After(1, function() OnSystemMsg("Moistorcs rolls 12 (1-100)") end)
-            C_Timer.After(2, function() OnSystemMsg("Beaglz rolls 87 (1-100)") end)
-            C_Timer.After(3, function() OnSystemMsg("Soffty rolls 87 (1-100)") end)
-            C_Timer.After(4, function() OnGambaChat("High tie breaker! Beaglz and Soffty /roll 100 now!", "SimHost") end)
-            C_Timer.After(6, function() OnSystemMsg("Beaglz rolls 55 (1-100)") end)
-            C_Timer.After(7, function() OnSystemMsg("Soffty rolls 91 (1-100)") end)
-            C_Timer.After(9, function()
+            SimTimer(1, function() OnSystemMsg("Moistorcs rolls 12 (1-100)") end)
+            SimTimer(2, function() OnSystemMsg("Beaglz rolls 87 (1-100)") end)
+            SimTimer(3, function() OnSystemMsg("Soffty rolls 87 (1-100)") end)
+            SimTimer(4, function() OnGambaChat("High tie breaker! Beaglz and Soffty /roll 100 now!", "SimHost") end)
+            SimTimer(6, function() OnSystemMsg("Beaglz rolls 55 (1-100)") end)
+            SimTimer(7, function() OnSystemMsg("Soffty rolls 91 (1-100)") end)
+            SimTimer(9, function()
                 ns.ForceSandbox(3)
                 OnGambaChat("Moistorcs owes Soffty 75g", "SimHost")
             end)
         else
-            C_Timer.After(1, function() OnSystemMsg("Beaglz rolls 87 (1-100)") end)
-            C_Timer.After(2, function() OnSystemMsg("Soffty rolls 12 (1-100)") end)
-            C_Timer.After(3, function() OnSystemMsg("Moistorcs rolls 12 (1-100)") end)
-            C_Timer.After(4, function() OnGambaChat("Low tie breaker! Soffty and Moistorcs /roll 100 now!", "SimHost") end)
-            C_Timer.After(6, function() OnSystemMsg("Soffty rolls 33 (1-100)") end)
-            C_Timer.After(7, function() OnSystemMsg("Moistorcs rolls 8 (1-100)") end)
-            C_Timer.After(9, function()
+            SimTimer(1, function() OnSystemMsg("Beaglz rolls 87 (1-100)") end)
+            SimTimer(2, function() OnSystemMsg("Soffty rolls 12 (1-100)") end)
+            SimTimer(3, function() OnSystemMsg("Moistorcs rolls 12 (1-100)") end)
+            SimTimer(4, function() OnGambaChat("Low tie breaker! Soffty and Moistorcs /roll 100 now!", "SimHost") end)
+            SimTimer(6, function() OnSystemMsg("Soffty rolls 33 (1-100)") end)
+            SimTimer(7, function() OnSystemMsg("Moistorcs rolls 8 (1-100)") end)
+            SimTimer(9, function()
                 ns.ForceSandbox(3)
                 OnGambaChat("Moistorcs owes Beaglz 75g", "SimHost")
             end)
@@ -704,9 +713,9 @@ local function HandleSlash(input)
         OnGambaChat(GAMBA_START_MSG .. " (1-100)", "SimHost")
         OnGambaChat("Game Mode - Classic - Wager - 100g", "SimHost")
         OnGambaChat(GAMBA_ROLL_MSG, "SimHost") -- close entries so rolls count
-        C_Timer.After(1, function() OnSystemMsg("Beaglz rolls 50 (1-100)") end)
-        C_Timer.After(2, function() OnSystemMsg("Soffty rolls 50 (1-100)") end)
-        C_Timer.After(4, function() OnGambaChat(GAMBA_NO_WINNERS_MSG, "SimHost") end)
+        SimTimer(1, function() OnSystemMsg("Beaglz rolls 50 (1-100)") end)
+        SimTimer(2, function() OnSystemMsg("Soffty rolls 50 (1-100)") end)
+        SimTimer(4, function() OnGambaChat(GAMBA_NO_WINNERS_MSG, "SimHost") end)
         return
     end
 
