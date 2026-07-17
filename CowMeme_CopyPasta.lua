@@ -106,7 +106,7 @@ end
 -- no-winners tombstone), hold off any roll-tracker repaint for a few seconds so
 -- a leader who immediately restarts gamba doesn't instantly wipe the image with
 -- "Waiting for entries...". Only the visual is held; state tracking never waits.
-local SAVOR_TIME = 5
+local SAVOR_TIME = 8
 local savorUntil = 0
 local savorTimer = nil
 local headerClearPending = false
