@@ -9,6 +9,7 @@ ns.defaults.fnc = {
     batch  = false, -- batch milestone announcements (always on in raid)
     allowGroupReset = true, -- honor /fnc reset group from the group's authority
     deaths = {}, -- { [playerName] = count }
+    friendlyFire = {}, -- { [killerName] = count } -- kills on mind-controlled allies
 }
 
 local fncFrame = CreateFrame("Frame", "CowMemeFnCFrame", UIParent)
@@ -51,6 +52,7 @@ end
 local function BeginRun()
     ns.db.fnc.active = true
     ns.db.fnc.deaths = {}
+    ns.db.fnc.friendlyFire = {}
     fnc.ApplyState()
     ns.sync.Ping() -- advertise the F flag promptly
 end
@@ -72,6 +74,7 @@ end
 -- Reset deaths without stopping
 function fnc.Reset()
     ns.db.fnc.deaths = {}
+    ns.db.fnc.friendlyFire = {}
     ns.Print("|cffFFD700[Fast and Clean]|r Deaths reset.")
 end
 
@@ -133,6 +136,20 @@ function fnc.Report(target)
         end
     end
 
+    -- Friendly-fire leaderboard: who has put down the most mind-controlled allies
+    local ffList = {}
+    for name, count in pairs(ns.db.fnc.friendlyFire) do
+        table.insert(ffList, { name = name, count = count })
+    end
+    table.sort(ffList, function(a, b) return a.count > b.count end)
+    if #ffList > 0 then
+        table.insert(lines, "[FnC] Friendly Fire (team kills):")
+        for i, entry in ipairs(ffList) do
+            table.insert(lines, string.format("  %d. %s - %d kill%s",
+                i, entry.name, entry.count, entry.count == 1 and "" or "s"))
+        end
+    end
+
     if channel == "GUILD" then
         local i = 1
         local function SendNext()
@@ -174,6 +191,9 @@ end
 -- A skull-mark suffix (see HasSkullMark) filters casual hand-typed spoofs.
 local SOUND_LINES = {
     { match = "^First blood! ", sound = "cm_firstblood.ogg" },
+    -- Team kills on mind-controlled allies (see FF_MARKER); anchored on the
+    -- constant prefix every friendly-fire line carries.
+    { match = "^FRIENDLY FIRE", sound = "cm_ultrakill.ogg" },
     -- Milestone entries are appended below, derived from MILESTONES so a
     -- reworded milestone can't silently break its sound.
 }
@@ -333,6 +353,50 @@ local function AnnounceFnc(msg)
     end
 end
 
+-- Friendly-fire callouts: someone in the raid finished off a mind-controlled
+-- ally. Every line is (killer, victim); the shared FF_MARKER prefix is what the
+-- sound watcher anchors on (see SOUND_LINES), so keep it leading and literal.
+local FF_MARKER = "FRIENDLY FIRE"
+local FF_LINES = {
+    "%s executed %s",
+    "%s deleted %s the instant they turned",
+    "%s saw %s turn and did NOT hesitate",
+    "%s folded %s like a lawn chair",
+    "%s turned %s into loot",
+    "%s put down %s, no mercy given",
+    "%s gave %s the ol' friendly-fire special",
+    "%s clapped %s back to their body",
+}
+
+local FF_PANEL_DURATION = 12
+
+-- Increment the killer's tally and call it out. Runs on every client that saw
+-- the combat log (counter is local, like deaths); the announce itself is
+-- leader-gated inside ns.Announce, so only one client actually sends to chat.
+local function RecordFriendlyFire(killer, victim)
+    local ff = ns.db.fnc.friendlyFire
+    ff[killer] = (ff[killer] or 0) + 1
+    local count = ff[killer]
+    ns.Print("|cffFFD700[FnC]|r |cffff4444FRIENDLY FIRE|r: " .. killer ..
+        " killed " .. victim .. ". (" .. count .. ")")
+    local flavor = string.format(FF_LINES[math.random(#FF_LINES)], killer, victim)
+    local banner = FF_MARKER .. " x" .. count .. "!"
+    AnnounceFnc(banner .. " " .. flavor .. " {rt8}")
+
+    -- Panel: show the victim's image (ffImage, else pasta image, else default)
+    -- with the flavor in red and the banner in the footer. Local to every
+    -- client, same as the pasta panel card.
+    local ffImage = ns.copypasta and ns.copypasta.FriendlyFireImage(victim)
+    if ffImage then
+        ns.panel.Display({
+            image = ffImage,
+            text = "|cffff0000" .. flavor .. "|r",
+            footer = "|cffff0000" .. banner .. "|r",
+            duration = FF_PANEL_DURATION,
+        })
+    end
+end
+
 -- entries: { { name = "Bob", cause = "slain by ... (fire)" }, ... }
 -- "Bob, cause is" / "Bob, cause and Alice, cause are"
 local function FormatSubject(entries)
@@ -424,18 +488,41 @@ local function ParseCause(subevent, sourceName, ...)
     return nil
 end
 
-local function RecordDamage(destGUID, cause, destName)
+-- A friendly *player* in our own group dealt this damage. In PvE you cannot
+-- hit a friendly unless they've been flipped hostile (mind control / charm), so
+-- a groupmate being the last hand on a dead ally is a team kill. Pets are
+-- excluded (TYPE_PLAYER) so the kill attributes to an actual person.
+local OURS_AFFILIATION = bit.bor(
+    COMBATLOG_OBJECT_AFFILIATION_MINE,
+    COMBATLOG_OBJECT_AFFILIATION_PARTY,
+    COMBATLOG_OBJECT_AFFILIATION_RAID)
+
+local function IsFriendlyPlayerSource(sourceFlags)
+    if not sourceFlags then return false end
+    return bit.band(sourceFlags, COMBATLOG_OBJECT_TYPE_PLAYER) ~= 0
+        and bit.band(sourceFlags, OURS_AFFILIATION) ~= 0
+end
+
+-- friendly = IsFriendlyPlayerSource(sourceFlags) from the caller; killerGUID is
+-- kept so the death handler can rule out self-inflicted damage (guid == victim).
+local function RecordDamage(destGUID, cause, destName, killer, killerGUID, friendly)
     if destGUID and cause then
-        lastDamage[destGUID] = { cause = cause, time = GetTime() }
+        lastDamage[destGUID] = {
+            cause = cause, time = GetTime(),
+            killer = killer, killerGUID = killerGUID, friendly = friendly,
+        }
         -- Guard before building the string: this path runs per damage event
         if ns.DebugVerbose("fnc") then
-            ns.DebugPrint("fnc", "damage: " .. (destName or destGUID) .. " <- " .. cause)
+            ns.DebugPrint("fnc", "damage: " .. (destName or destGUID) .. " <- " .. cause
+                .. (friendly and (" [friendly source: " .. (killer or "?") .. "]") or ""))
         end
     end
 end
 
--- Look up (and consume) a fresh cause of death for a GUID
-local function GetCause(destGUID)
+-- Look up (and consume) a fresh last-hit record for a GUID. Returns the whole
+-- entry (cause + killer/friendly info) so the death handler can read both; nil
+-- if nothing recorded or it's gone stale.
+local function ConsumeLastHit(destGUID)
     local entry = lastDamage[destGUID]
     lastDamage[destGUID] = nil
     if not entry then
@@ -447,7 +534,7 @@ local function GetCause(destGUID)
         if ns.DebugOn("fnc") then
             ns.DebugPrint("fnc", string.format("cause lookup: hit (%.1fs old): %s", age, entry.cause))
         end
-        return entry.cause
+        return entry
     end
     if ns.DebugOn("fnc") then
         ns.DebugPrint("fnc", string.format("cause lookup: stale (%.1fs old, limit %ds): %s",
@@ -536,7 +623,8 @@ local function OnUnitDied(destGUID, destName, destFlags, sim)
         ns.DebugPrint("fnc", "death deduped (SoR fade after falling): " .. destName)
         return
     end
-    local cause = GetCause(destGUID) or "unknown causes"
+    local hit = ConsumeLastHit(destGUID)
+    local cause = (hit and hit.cause) or "unknown causes"
     -- Only falling deaths fire UNIT_DIED twice, so only they arm the dedup
     if cause == ENVIRONMENT_CAUSE.FALLING then
         recentDeaths[destGUID] = now
@@ -545,6 +633,14 @@ local function OnUnitDied(destGUID, destName, destFlags, sim)
     deaths[destName] = (deaths[destName] or 0) + 1
     ns.Print("|cffFFD700[FnC]|r " .. destName .. " died — " .. cause .. ". (" .. deaths[destName] .. ")")
     AnnounceDeath(destName, deaths[destName], cause)
+
+    -- Friendly fire: a groupmate landed the last blow on this ally, which only
+    -- happens when the victim was mind-controlled. Separate counter, separate
+    -- callout; the death above still counts for the victim as usual. Guard
+    -- against self-inflicted damage (same GUID).
+    if hit and hit.friendly and hit.killer and hit.killerGUID ~= destGUID then
+        RecordFriendlyFire(Strip(hit.killer), Strip(destName))
+    end
 end
 
 fncFrame:SetScript("OnEvent", function(self, event, ...)
@@ -555,7 +651,9 @@ fncFrame:SetScript("OnEvent", function(self, event, ...)
         if subevent == "UNIT_DIED" then
             OnUnitDied(destGUID, destName, destFlags)
         elseif subevent:find("_DAMAGE", 1, true) or subevent == "SPELL_INSTAKILL" then
-            RecordDamage(destGUID, ParseCause(subevent, sourceName, select(12, CombatLogGetCurrentEventInfo())), destName)
+            local cause = ParseCause(subevent, sourceName, select(12, CombatLogGetCurrentEventInfo()))
+            RecordDamage(destGUID, cause, destName,
+                sourceName, sourceGUID, IsFriendlyPlayerSource(sourceFlags))
         end
     end
 end)
@@ -563,10 +661,13 @@ end)
 -- Resume tracking if it was active before logout
 function fnc.Init()
     if not ns.db.fnc then
-        ns.db.fnc = { active = false, batch = false, deaths = {} }
+        ns.db.fnc = { active = false, batch = false, deaths = {}, friendlyFire = {} }
     end
     if ns.db.fnc.allowGroupReset == nil then
         ns.db.fnc.allowGroupReset = true -- setting added after early saves
+    end
+    if not ns.db.fnc.friendlyFire then
+        ns.db.fnc.friendlyFire = {} -- counter added after early saves
     end
     fnc.ApplyState()
     if ns.db.enabled and ns.db.fnc.active then
@@ -669,6 +770,22 @@ fncCommands["simdeath"] = function(arg)
     end
     SimSandbox(nobox, 3)
     OnUnitDied("Sim-" .. name, name, COMBATLOG_OBJECT_TYPE_PLAYER, true)
+end
+
+fncCommands["simff"] = function(arg)
+    if not RequireDebug() then return end
+    local rest, nobox = StripNobox(arg)
+    local killer, victim = (rest or ""):match("^(%S+)%s+(%S+)")
+    if not killer or not victim then
+        ns.Print("|cffFFD700[FnC]|r Usage: /fnc simff <killer> <victim> [nobox]")
+        return
+    end
+    SimSandbox(nobox, 3)
+    -- Record a friendly *player* last-hit (distinct killer GUID so the self-hit
+    -- guard passes), then run the death through the real pipeline.
+    RecordDamage("Sim-" .. victim, "slain by " .. killer .. "'s Mind Blast (shadow)",
+        victim, killer, "Sim-killer-" .. killer, true)
+    OnUnitDied("Sim-" .. victim, victim, COMBATLOG_OBJECT_TYPE_PLAYER, true)
 end
 
 fncCommands["simsound"] = function(arg)
@@ -802,6 +919,7 @@ function fnc.PrintCommands()
     if ns.db.debug then
         print("  |cffffff00/fnc simdamage <name> <cause>|r - (debug) record fake damage")
         print("  |cffffff00/fnc simdeath <name> [nobox]|r  - (debug) simulate a death")
+        print("  |cffffff00/fnc simff <killer> <victim> [nobox]|r - (debug) simulate a friendly-fire kill")
         print("  |cffffff00/fnc simbatch <m> <n> [nobox]|r - (debug) simulate batched milestones")
         print("  |cffffff00/fnc simsound [milestone]|r     - (debug) play a sound via a fake line (no arg = first blood)")
         print("  |cffffff00/fnc simreset|r                 - (debug) simulate receiving a group reset")
@@ -816,8 +934,11 @@ function fnc.PrintStatus()
     local batch    = ns.db.fnc.batch  and "|cff00ff00ON|r" or "|cffff0000OFF|r"
     local n = 0
     for _ in pairs(ns.db.fnc.deaths) do n = n + 1 end
+    local ffKills = 0
+    for _, c in pairs(ns.db.fnc.friendlyFire) do ffKills = ffKills + c end
     print("  |cffFFD700FnC|r: tracking " .. tracking .. ", batch " .. batch ..
-        " (auto in raid), " .. n .. " tracked")
+        " (auto in raid), " .. n .. " tracked"
+        .. (ffKills > 0 and (", " .. ffKills .. " friendly-fire kill" .. (ffKills == 1 and "" or "s")) or ""))
 end
 
 fncCommands["help"]   = function() fnc.PrintCommands() end

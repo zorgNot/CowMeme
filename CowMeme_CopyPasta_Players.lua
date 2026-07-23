@@ -3,6 +3,7 @@ local ADDON_NAME, ns = ...
 ns.copypasta.Register("Moist", {
     chars = { "Moistorcs", },
     image = "Interface\\AddOns\\CowMeme\\images\\Moist",
+    ffImage = "Interface\\AddOns\\CowMeme\\images\\Moist_ultimate",
     lines = {
         "moist could walk into kara and somehow owe Prince Malchezaar gold by the end of the night",
         "@Moistiana is it true your PvP opener was evasion instead of sap after pressing Shadow Step? ... yes",
@@ -318,7 +319,7 @@ ns.copypasta.Register("Drav", {
 })
 
 ns.copypasta.Register("Panzer", {
-    chars = { "Panzervii, Panzerix" },
+    chars = { "Panzervii", "Panzerix" },
     image = "Interface\\AddOns\\CowMeme\\images\\Panzer",
     lines = {
        "PANZERVII joins the guild TWO PHASES LATE!!!!!! looks around at every class in TBC and still locks hunter. incredible commitment to oversaturated labor markets. hired anyway. somehow..",

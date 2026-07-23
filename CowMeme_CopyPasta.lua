@@ -14,8 +14,10 @@ ns.defaults.copypasta = {
 -- Registry: populated by individual content files
 -- {
 --   [playerKey] = {
---     chars = { "MainName", "Alt1", "Alt2", ... },
---     lines = { "line1", "line2", ... },
+--     chars   = { "MainName", "Alt1", "Alt2", ... },
+--     lines   = { "line1", "line2", ... },
+--     image   = "Interface\\AddOns\\CowMeme\\images\\Name",          -- optional pasta image
+--     ffImage = "Interface\\AddOns\\CowMeme\\images\\Name_ultimate", -- optional friendly-fire image
 --   }
 -- }
 cp.registry = {}
@@ -49,6 +51,14 @@ end
 -- Panel display when a pasta fires. Registry entries may carry an optional
 -- per-player image field; the addon icon is the fallback.
 local DEFAULT_PASTA_IMAGE = "Interface\\AddOns\\CowMeme\\images\\image"
+
+-- Public: the best friendly-fire image for any of a player's characters. Prefers
+-- the dedicated ffImage, falls back to the pasta image, then the addon icon --
+-- so a team kill always has something to show. Used by FnC.
+function cp.FriendlyFireImage(name)
+    local entry = name and Resolve(name)
+    return (entry and (entry.ffImage or entry.image)) or DEFAULT_PASTA_IMAGE
+end
 local PASTA_PANEL_DURATION = 15
 
 -- Loss phrases shown after the player's name on the panel; one picked at
